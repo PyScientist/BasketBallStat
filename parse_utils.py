@@ -9,7 +9,7 @@ def time_stamp():
     print(datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S'))
 
 
-def get_assignment_to_parse(file_path: str, tab_internal: str) -> Union[List[Tuple[str, str, str]], None]:
+def get_assignment_to_parse(file_path: str, tab_internal: str) -> Union[List[Tuple[str, str, str, str, str]], None]:
     """The function get information from specified Excel file and provide it as List.
     This function also print in console the list of teams which will be parsed and updated.
     :param file_path: Full path to Excel file
@@ -21,6 +21,7 @@ def get_assignment_to_parse(file_path: str, tab_internal: str) -> Union[List[Tup
         """creation of local path from given url"""
         folder = './parse_results/'
         path = url.replace('https://basketball.usbasket.com/', '')
+        path = path.replace('http://www.eurobasket.com/', '')
         path = path.replace('/', '_')
         path = path.replace('?', '_')
         path += '.html'
@@ -42,13 +43,16 @@ def get_assignment_to_parse(file_path: str, tab_internal: str) -> Union[List[Tup
         links_to_teams_tournament_tables = teams_df['Links'].values
         teams = teams_df['Short names'].values
         local_links = teams_df['local_links'].values
+        leagues = teams_df['League']
+        seasons = teams_df['Season']
+
         teams_descriptions = teams_df['teams_descriptions'].values
 
         print('The information will be updated for the following teams:')
         for i, row in enumerate(teams_descriptions):
             print(f'{i+1}) {row}')
 
-        return list(zip(teams, links_to_teams_tournament_tables, local_links))
+        return list(zip(teams, links_to_teams_tournament_tables, local_links, leagues, seasons))
 
     except Exception as e:
         print(f'Some exception occurred (get_assignment_to_parse): {e}')
@@ -141,6 +145,8 @@ def link_to_local_hash_func(game_link_internal_in: str) -> str:
     game_link_internal = game_link_internal.replace('http://www.usbasket.com/', '')
     game_link_internal = game_link_internal.replace('?', '__quest_mark__')
     game_link_internal = game_link_internal.replace('https://www.usbasket.com/', '')
+    game_link_internal = game_link_internal.replace('http://www.eurobasket.com/', '')
+    game_link_internal = game_link_internal.replace('htts://www.eurobasket.com/', '')
     return f'{game_link_internal}.html'
 
 
@@ -210,6 +216,7 @@ def grab_data_for_export() -> tuple:
     file_plays = 'plays_results.csv'
 
     df_plays = pd.read_csv(f'{folder}/{file_plays}', delimiter=";", encoding='utf-8')
+    df_plays.drop_duplicates(inplace = True)
 
     list_files = os.listdir(folder)
 
@@ -220,6 +227,7 @@ def grab_data_for_export() -> tuple:
                                                   delimiter=";", encoding='utf-8'))
 
     df_tournament = pd.concat(df_tournament_list, sort=False, axis=0)
+    df_tournament.drop_duplicates(inplace = True)
 
     df_merged = pd.merge(df_plays,
                          df_tournament,
@@ -234,11 +242,11 @@ def grab_data_for_export() -> tuple:
 
 def export_to_excel(data_in: tuple) -> bool:
     try:
-        with pd.ExcelWriter('jupyter/results.xlsx', engine='xlsxwriter') as writer:
+        with pd.ExcelWriter('jupyter/Results.xlsx', engine='xlsxwriter') as writer:
             data_in[0].to_excel(writer, sheet_name='plays', index=False)
             data_in[1].to_excel(writer, sheet_name='tournament', index=False)
             data_in[2].to_excel(writer, sheet_name='combine', index=False)
-            print('results have writen to Excel')
+            print('results have writen to Excel (Results.xlsx)')
         return True
     except Exception as e:
         print(f'While exporting to Excel an error occurred {e}')
@@ -258,4 +266,3 @@ def export_to_google_sheets(data_in: tuple) -> bool:
 if __name__ == '__main__':
     data = grab_data_for_export()
     export_to_excel(data)
-

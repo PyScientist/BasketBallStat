@@ -16,6 +16,8 @@ def perform_parse():
         game_link_internal = game_link_internal.replace('http://www.usbasket.com/', '')
         game_link_internal = game_link_internal.replace('?', '__quest_mark__')
         game_link_internal = game_link_internal.replace('https://www.usbasket.com/', '')
+        game_link_internal = game_link_internal.replace('http://www.eurobasket.com/', '')
+        game_link_internal = game_link_internal.replace('htts://www.eurobasket.com/', '')
         return f'./parse_results/{team_internal[0]}/{game_link_internal}.html'
 
     time_to_sleap = 0.2
@@ -30,6 +32,8 @@ def perform_parse():
         team_name = team[0]
         team_url = team[1]
         team_local_link = team[2]
+        league = team[3]
+        season = team[4]
         # sleep for a while before go to next parsing point
         time.sleep(random.random() * time_to_sleap)
         # Get content of html from link and put it in local file using proxy
@@ -39,7 +43,7 @@ def perform_parse():
             # The key of access to list in dict is short_name of the team
             time_stamp()
             print(f'The file {team_local_link} created for team {team_name}')
-            parsed_tournament_content = pars_tournament_content(team_local_link)
+            parsed_tournament_content = pars_tournament_content(team_local_link, league, season)
             main_team = parsed_tournament_content['team']
             games_links[team_name] = parsed_tournament_content['links']
             already_parsed = get_list_of_files_in_parse_results_for_particular_team(team_name)

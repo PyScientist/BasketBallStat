@@ -37,9 +37,12 @@ def get_content(url: str, file_path: str, proxies_flag=False, random_proxy=None)
         return False
 
 
-def pars_tournament_content(url: str) -> Dict:
-    """Write results of parsing for tournament table in csv file"""
-
+def pars_tournament_content(url: str, league: str, season: str) -> Dict:
+    """Write results of parsing for tournament table in csv file
+    :param url: link to tournament page
+    :param league: Tournament league (for example NBA)
+    :param season: years of tournament (for example 2021-2022)
+    """
     dict_play_result = {
         'https://www.eurobasket.com/images/minus.png': 0,
         'https://www.eurobasket.com/images/plus.png': 1,
@@ -47,14 +50,14 @@ def pars_tournament_content(url: str) -> Dict:
 
     GET_SINGLE_PLAY_RETURN = [Tuple, None]
 
-    def write_parce_results_in_file(data: Dict) -> Dict:
-        path = f'./parse_content/{data["team"]}_tournament_schedule_22-23.csv'
+    def write_parce_results_in_file(data: Dict, season: str) -> Dict:
+        path = f'./parse_content/{data["team"]}_tournament_schedule_{season}.csv'
         with open(path, 'w', encoding='utf-8') as f:
             header = "Team;Game;" \
                      "Date;League;" \
                      "Team_at_home;Team_outside;Home_flag;" \
                      "Score_home_team;Score_outside_team;Sum_score;" \
-                     "Victory_flag;Local_name;Link\n"
+                     "Victory_flag;Local_name;Link;season\n"
             f.write(header)
             for row in data['plays']:
                 items = ''
@@ -62,22 +65,40 @@ def pars_tournament_content(url: str) -> Dict:
                     if i+1 < len(row):
                         items+=f'{str(item)};'
                     else:
-                        items += f'{str(item)}\n'
+                        items += f'{str(item)};{season}\n'
                 f.write(items)
 
-    def get_single_play(td_records: bs4.element.ResultSet, team: str) -> GET_SINGLE_PLAY_RETURN:
-        if td_records[4].find('a') is not None:
-            if td_records[4].find('a').contents[0] == 'History':
+    def get_single_play(td_records: bs4.element.ResultSet, team: str, season: str, league: str) -> GET_SINGLE_PLAY_RETURN:
+
+        if  (season == '2021-2022') or (season == '2020-2021'):
+            print('------------------------', len(td_records))
+            print(td_records)
+            print('------------------------')
+            score_sell = td_records[3]
+            round_sell = td_records[1]
+            team_cell = td_records[2]
+        elif season == '2022-2023':
+            score_sell = td_records[4]
+            round_sell = td_records[2]
+            team_cell = td_records[3]
+
+        if score_sell.find('a') is not None:
+            if score_sell.find('a').contents[0] == 'History':
                 pass
             else:
                 date = td_records[0].contents[0]
-                league = td_records[1].find('img')['title']
-                game = td_records[2].find('span', class_='rnd_desktop').contents[0]
-                team_at_home = td_records[3].find('span', class_='spnt2').contents[0].contents[0]
-                team_outside = td_records[3].find('span', class_='spnt1').contents[0].contents[0]
-                link = td_records[4].find('a')['href'].strip()
-                score_outside_team, score_home_team = td_records[4].find('a').contents[0].split('-')
-                victory_flag = dict_play_result[td_records[4].find('img')['src']]
+                if (season == '2021-2022') or (season == '2020-2021'):
+                    league = league
+                    game = round_sell.contents[0]
+                elif season == '2022-2023':
+                    league = td_records[1].find('img')['title']
+                    game = round_sell.find('span', class_='rnd_desktop').contents[0]
+
+                team_at_home = team_cell.find('span', class_='spnt2').contents[0].contents[0]
+                team_outside = team_cell.find('span', class_='spnt1').contents[0].contents[0]
+                link = score_sell.find('a')['href'].strip()
+                score_outside_team, score_home_team = score_sell.find('a').contents[0].split('-')
+                victory_flag = dict_play_result[score_sell.find('img')['src']]
 
                 sum_score = int(score_home_team) + int(score_outside_team)
 
@@ -97,10 +118,18 @@ def pars_tournament_content(url: str) -> Dict:
     with open(url, 'r', encoding='utf-8') as f:
         response = f.read()
     soup = BeautifulSoup(response, 'lxml')
-    game_schedule_records = soup.find_all('tr', class_='Mnewstext new_games_list')
+
+    if (season == '2021-2022') or (season == '2020-2021'):
+        game_schedule_records = soup.find_all('tr', class_='Mnewstext')[1:]
+    elif season == '2022-2023':
+        game_schedule_records = soup.find_all('tr', class_='Mnewstext new_games_list')
 
     team = soup.find("td", class_="authorstitle gameschedule_full_tbl_team").contents
-    team = team[0].replace('\xa0', '').replace(' Games/Schedule (2022-2023)', '')
+    if (season == '2021-2022') or (season == '2020-2021'):
+        team = team[0].replace('\xa0', '').replace(' Games/Schedule', '')
+    elif season == '2022-2023':
+        team = team[0].replace('\xa0', '').replace(' Games/Schedule (2022-2023)', '')
+
 
     games_chart_particular_team = {
                     'plays': [],
@@ -109,12 +138,14 @@ def pars_tournament_content(url: str) -> Dict:
                     }
 
     for game_record in game_schedule_records:
-        single_result = get_single_play(game_record.find_all('td'), team)
-        if single_result is not None:
-            games_chart_particular_team['plays'].append(single_result)
-            games_chart_particular_team['links'].append(single_result[len(single_result)-1])
+        # Check is obtained row is header (for example play of or etc... or not)
+        if len(game_record.find_all('td')) != 1:
+            single_play_result = get_single_play(game_record.find_all('td'), team, season, league)
+        if single_play_result is not None:
+            games_chart_particular_team['plays'].append(single_play_result)
+            games_chart_particular_team['links'].append(single_play_result[len(single_play_result)-1])
 
-    write_parce_results_in_file(games_chart_particular_team)
+    write_parce_results_in_file(games_chart_particular_team, season)
 
     return games_chart_particular_team
 
