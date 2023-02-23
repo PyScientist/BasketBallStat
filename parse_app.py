@@ -5,10 +5,10 @@ import bs4
 import fake_useragent
 from typing import Tuple, Dict
 import os
-from parse_utils import link_to_local_hash_func
+from parse_utils_app import link_to_local_hash_func
 
 
-def get_content(url: str, file_path: str, proxies_flag=False, random_proxy=None) -> bool:
+def get_content(url: str, file_path: str, logger, proxies_flag=False, random_proxy=None) -> bool:
     """Got content from url and put it into local file
     It can be also proxy can be used"""
     def write_response_to_file(response_in: requests.models.Response, file_path_in: str) -> None:
@@ -23,17 +23,17 @@ def get_content(url: str, file_path: str, proxies_flag=False, random_proxy=None)
     try:
         if proxies_flag and random_proxy is not None:
             response, proxy = random_proxy(url)
-            print(f'to get response used: {proxy}')
+            logger.emit(f'\nto get response used: {proxy}')
         else:
             response = session.get(url, headers=header)
         if response is None:
-            print(f'{url} is not connected to proxy')
+            logger.emit(f'\n{url} is not connected to proxy')
             return False
         else:
             write_response_to_file(response, file_path)
         return True
     except Exception as e:
-        print(f'Some exception {e} occurred')
+        logger.emit(f'\nSome exception {e} occurred')
         return False
 
 
@@ -70,10 +70,7 @@ def pars_tournament_content(url: str, league: str, season: str) -> Dict:
 
     def get_single_play(td_records: bs4.element.ResultSet, team: str, season: str, league: str) -> GET_SINGLE_PLAY_RETURN:
 
-        if  (season == '2021-2022') or (season == '2020-2021'):
-            print('------------------------', len(td_records))
-            print(td_records)
-            print('------------------------')
+        if  (season == '2021-2022') or (season == '2020-2021') or (season == '2019-2020'):
             score_sell = td_records[3]
             round_sell = td_records[1]
             team_cell = td_records[2]
@@ -87,7 +84,7 @@ def pars_tournament_content(url: str, league: str, season: str) -> Dict:
                 pass
             else:
                 date = td_records[0].contents[0]
-                if (season == '2021-2022') or (season == '2020-2021'):
+                if (season == '2021-2022') or (season == '2020-2021') or (season == '2019-2020'):
                     league = league
                     game = round_sell.contents[0]
                 elif season == '2022-2023':
@@ -119,16 +116,17 @@ def pars_tournament_content(url: str, league: str, season: str) -> Dict:
         response = f.read()
     soup = BeautifulSoup(response, 'lxml')
 
-    if (season == '2021-2022') or (season == '2020-2021'):
-        game_schedule_records = soup.find_all('tr', class_='Mnewstext')[1:]
-    elif season == '2022-2023':
+    if season == '2022-2023':
         game_schedule_records = soup.find_all('tr', class_='Mnewstext new_games_list')
+    elif (season == '2021-2022') or (season == '2020-2021') or (season == '2019-2020'):
+        game_schedule_records = soup.find_all('tr', class_='Mnewstext')[1:]
 
     team = soup.find("td", class_="authorstitle gameschedule_full_tbl_team").contents
-    if (season == '2021-2022') or (season == '2020-2021'):
-        team = team[0].replace('\xa0', '').replace(' Games/Schedule', '')
-    elif season == '2022-2023':
+    if season == '2022-2023':
         team = team[0].replace('\xa0', '').replace(' Games/Schedule (2022-2023)', '')
+    elif (season == '2021-2022') or (season == '2020-2021') or (season == '2019-2020'):
+        team = team[0].replace('\xa0', '').replace(' Games/Schedule', '')
+
 
 
     games_chart_particular_team = {
@@ -150,7 +148,7 @@ def pars_tournament_content(url: str, league: str, season: str) -> Dict:
     return games_chart_particular_team
 
 
-def pars_play_content(url: str, main_team: str) -> None:
+def pars_play_content(url: str, main_team: str, logger) -> None:
     """Write results of parsing for tournament table in csv file"""
 
     def decode_string(input_string: str) -> str:
@@ -230,20 +228,20 @@ def pars_play_content(url: str, main_team: str) -> None:
                     items += f'{str(item)}\n'
             f.write(items)
 
-    def combine_results(results_in: tuple, results_opposite_in: tuple, adds_in: tuple) -> tuple:
+    def combine_results(results_in: tuple, results_opposite_in: tuple, adds_in: tuple, logger) -> tuple:
         combined_data = []
         combined_data.extend(list(adds_in[:5]))
         # Sometimes succession the tables for in plays in html are not depend on
         # from which team the transition was made so for further correct analysis it is need to
         # swap results of commands and its names.
         if adds_in[0].lower() == adds_in[5].lower() and adds_in[0].lower() != adds_in[6].lower():
-            print('Analysed team - {}, first - {}, second - {}'.format(adds_in[0].lower(),
+            logger.emit('\nAnalysed team - {}, first - {}, second - {}'.format(adds_in[0].lower(),
                                                    adds_in[5].lower(),
                                                    adds_in[6].lower()))
             combined_data.extend(list(adds_in[5:6]))
             combined_data.extend(list(results_in))
         else:
-            print('Analysed team - {}, first - {}, second - {} so need to swap'.format(adds_in[0].lower(),
+            logger.emit('\nAnalysed team - {}, first - {}, second - {} so need to swap'.format(adds_in[0].lower(),
                                                    adds_in[5].lower(),
                                                    adds_in[6].lower()))
             combined_data.extend(list(adds_in[6:7]))
@@ -262,21 +260,23 @@ def pars_play_content(url: str, main_team: str) -> None:
         response = f.read()
 
     soup = BeautifulSoup(response, 'lxml')
+    try:
+        team = soup.find('td', class_="my_top_center").find('a').find('span').contents[0]
+        game = soup.find('div', id='boxscores').find('div').find_all('span')[1].contents[0].split(':')[0]
+        league = soup.find('div', id='boxscores').find('div').find_all('span')[0].contents[0]
+        date = soup.find('div', id='boxscores').find('div').find_all('span')[2].contents[0].replace('Date: ', '')
+        opposite_team = soup.find_all('td', class_="my_top_center")[1].find('a').find('span').contents[0]
+        adds = tuple([main_team, league, game, date, os.path.split(url)[1], team, opposite_team])
 
-    team = soup.find('td', class_="my_top_center").find('a').find('span').contents[0]
-    game = soup.find('div', id='boxscores').find('div').find_all('span')[1].contents[0].split(':')[0]
-    league = soup.find('div', id='boxscores').find('div').find_all('span')[0].contents[0]
-    date = soup.find('div', id='boxscores').find('div').find_all('span')[2].contents[0].replace('Date: ', '')
-    opposite_team = soup.find_all('td', class_="my_top_center")[1].find('a').find('span').contents[0]
-    adds = tuple([main_team, league, game, date, os.path.split(url)[1], team, opposite_team])
+        statistics_table = soup.find('tr', class_='my_totalStats')
+        results = team_results_parse(statistics_table)
+        statistics_table_opposite = soup.find_all('tr', class_='my_totalStats')[1]
+        results_opposite = team_results_parse(statistics_table_opposite)
 
-    statistics_table = soup.find('tr', class_='my_totalStats')
-    results = team_results_parse(statistics_table)
-    statistics_table_opposite = soup.find_all('tr', class_='my_totalStats')[1]
-    results_opposite = team_results_parse(statistics_table_opposite)
-
-    path = f'./parse_content/plays_results.csv'
-    write_results(combine_results(results, results_opposite, adds), path)
+        path = f'./parse_content/plays_results.csv'
+        write_results(combine_results(results, results_opposite, adds, logger), path)
+    except Exception as e:
+        logger.emit(f'\nsome exception ++--<<{e}>>--++ happened during handling {url}')
 
 
 if __name__ == '__main__':
