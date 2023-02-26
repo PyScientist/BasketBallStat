@@ -8,7 +8,7 @@ import os
 from parse_utils_app import link_to_local_hash_func
 
 
-def get_content(url: str, file_path: str, logger, proxies_flag=False, random_proxy=None) -> bool:
+def get_content(url: str, file_path: str, logger=None, proxies_flag=False, random_proxy=None) -> bool:
     """Got content from url and put it into local file
     It can be also proxy can be used"""
     def write_response_to_file(response_in: requests.models.Response, file_path_in: str) -> None:
@@ -23,17 +23,17 @@ def get_content(url: str, file_path: str, logger, proxies_flag=False, random_pro
     try:
         if proxies_flag and random_proxy is not None:
             response, proxy = random_proxy(url)
-            logger.emit(f'\nto get response used: {proxy}')
+            if logger != None: logger.emit(f'\nto get response used: {proxy}')
         else:
             response = session.get(url, headers=header)
         if response is None:
-            logger.emit(f'\n{url} is not connected to proxy')
+            if logger != None: logger.emit(f'\n{url} is not connected to proxy')
             return False
         else:
             write_response_to_file(response, file_path)
         return True
     except Exception as e:
-        logger.emit(f'\nSome exception {e} occurred')
+        if logger != None: logger.emit(f'\nSome exception {e} occurred')
         return False
 
 

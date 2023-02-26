@@ -75,17 +75,17 @@ class TeamStatSmart:
         :param name: имя параметра (фактически - это колонка дата фрейма статистики)
         :param type_stat: тип описательной статистики (фактически индекс дата фрейма статистики)
         """
-        if self.stat1.loc['count', type_stat] > 3:
+        if self.stat1.loc['count', type_stat] > 2:
             self.type = 'By the games with the same field and same opponent'
             return self.stat1.loc[name, type_stat]
-        elif (self.stat1.loc['count', type_stat] > 1) & (self.stat3.loc['count', type_stat] > 10):
+        elif (self.stat1.loc['count', type_stat] > 0) & (self.stat3.loc['count', type_stat] > 10):
             self.type = 'By the games with the same field and same opponent and on the same field avg.'
             return (self.stat1.loc[name, type_stat] + self.stat3.loc[name, type_stat])/2
 
-        elif self.stat2.loc['count', type_stat] > 3:
+        elif self.stat2.loc['count', type_stat] > 4:
             self.type = 'By the games with the same opponent'
             return self.stat2.loc[name, type_stat]
-        elif (self.stat2.loc['count', type_stat] > 2) & (self.stat3.loc['count', type_stat] > 10):
+        elif (self.stat2.loc['count', type_stat] > 0) & (self.stat3.loc['count', type_stat] > 10):
             self.type = 'By the games with the same opponent and on the same field avg.'
             return (self.stat2.loc[name, type_stat] + self.stat3.loc[name, type_stat])/2
         

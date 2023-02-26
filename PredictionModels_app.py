@@ -194,7 +194,7 @@ class AbstractBasketballModel:
     def plot_knr_training_results(self, ax) -> None:
         ax.clear()
         y_train, y_train_calc, y_test, y_test_calc = self.packed_knr_results_calc
-        ax.set_title(f'KNR Model for prediction {self.target} for team {self.team}')
+        ax.set_title(f'KNR Model for {self.target}, team {self.team}')
         plot_equal_values_line(ax)
         plot_error_percent_lines(ax, percentage=5, color='lavender')
         plot_error_percent_lines(ax, percentage=10, color='coral')

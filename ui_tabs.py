@@ -1,7 +1,10 @@
 import numpy as np
+import pandas as pd
 
-from PyQt5.QtWidgets import QTableWidgetItem, QAbstractScrollArea, QSizePolicy, QVBoxLayout
-from PyQt5.QtGui import QFont, QColor
+import os
+
+from PyQt5.QtWidgets import QTableWidgetItem, QAbstractScrollArea, QSizePolicy, QVBoxLayout, QColorDialog
+from PyQt5.QtGui import QFont, QColor, QBrush
 from PyQt5.QtCore import QDate
 from StatSmart_app import calc_time_shift, convert_date
 
@@ -62,15 +65,78 @@ class LastGamesTab:
     def __init__(self, host):
         try:
             self.host = host
+            self.color_file_path = './colors_list.csv'
             self.fill_league_and_team()
             self.host.lineEdit_file_with_parsing_results.textEdited.connect(self.fill_league_and_team)
             self.host.comboBox_LastGames_choose_league.currentTextChanged.connect(self.change_teams)
             self.host.pushButton_show_LastGames_details.clicked.connect(self.fill_table)
             self.host.spinBox_games_ammount_to_show.setValue(10)
             self.host.spinBox_games_ammount_to_show.valueChanged.connect(self.fill_table)
+            self.host.TableWidget_LastGames.itemDoubleClicked.connect(self.choose_color)
+            self.host.pushButton_save_colors.clicked.connect(self.save_color_scheme)
+
+            self.host.label_set_color1.setStyleSheet("background-color: #90EE90;")
+            self.host.label_set_color2.setStyleSheet("background-color: #FFB6C1;")
+            self.host.label_set_color3.setStyleSheet("background-color: #0078D7;")
+
         except Exception:
             self.host.textEdit_parsing_information.insertPlainText(f'\nSome error occurred '
                                                                    f'while loading LastGames tab')
+    def choose_color(self, item):
+        if self.host.checkBox_use_standart_color.isChecked():
+            if self.host.radioButton_set_color1.isChecked():
+                color = QColor(144, 238, 144)
+            elif self.host.radioButton_set_color2.isChecked():
+                color = QColor(255, 182, 193)
+            elif self.host.radioButton_set_color2.isChecked():
+                color = QColor(0, 120, 215)
+        else:
+            color = QColorDialog.getColor()
+        row = item.row()
+        columns = self.host.TableWidget_LastGames.columnCount()
+        for col in range(columns):
+            self.host.TableWidget_LastGames.item(row, col).setBackground(QBrush(color))
+
+    def save_color_scheme(self):
+        colors_to_save = []
+        for row in range(self.host.TableWidget_LastGames.rowCount()):
+            list_row = []
+            for col in range(3):
+                list_row.append(self.host.TableWidget_LastGames.item(row, col).text())
+            rgb_color = self.host.TableWidget_LastGames.item(row, col).background().color().getRgb()
+            list_row.append(rgb_color)
+            colors_to_save.append(list_row)
+        headers = ['Date', 'Team at home', 'Team away', 'color']
+        colors_df = pd.DataFrame(colors_to_save, columns=[headers])
+
+        if os.path.exists(self.color_file_path):
+            df = pd.read_csv(self.color_file_path, sep=';')
+            df_data = list(df[headers].values)
+            colors_df_data = list(colors_df[headers].values)
+
+            indexes_to_delete = []
+            for x in range(len(df_data)):
+                for y in range(len(colors_df_data)):
+                    if ((df_data[x][0] == colors_df_data[y][0])
+                            & (df_data[x][1] == colors_df_data[y][1])
+                            & (df_data[x][2] == colors_df_data[y][2])):
+                        indexes_to_delete.append(x)
+
+            indexes_to_delete.sort(reverse=True)
+            for index in indexes_to_delete:
+                df_data.pop(index)
+
+            df_data.extend(colors_df_data)
+            df_to_export = pd.DataFrame(df_data, columns=[headers])
+            df_to_export .to_csv(path_or_buf=self.color_file_path, sep=';', index=False)
+
+        else:
+            colors_df.to_csv(path_or_buf=self.color_file_path, sep=';', index=False)
+
+    def load_colors(self):
+        headers = ['Date', 'Team at home', 'Team away', 'color']
+        df = pd.read_csv(self.color_file_path, sep=';')
+        return [list(x) for x in df[headers].values]
 
     def fill_league_and_team(self):
         self.host.comboBox_LastGames_choose_league.clear()
@@ -119,20 +185,34 @@ class LastGamesTab:
 
         games_to_show = int(self.host.spinBox_games_ammount_to_show.value())
 
-        df_main_selection.insert(7, 'FGA #1', df_main_selection['2PA #1'] + df_main_selection['3PA #1'])
+        df_main_selection['2P% #1'] = (df_main_selection['2P% #1'] / 100).round(3)
+        df_main_selection['3P% #1'] = (df_main_selection['3P% #1'] / 100).round(3)
+        df_main_selection['FT% #1'] = (df_main_selection['FT% #1'] / 100).round(3)
+        df_main_selection.insert(7, 'FGA #1', (df_main_selection['2PA #1'] + df_main_selection['3PA #1']).round(1))
+        df_main_selection.insert(7, '2P #1', (df_main_selection['2PA #1'] * df_main_selection['2P% #1']).round(1))
+        df_main_selection.insert(10, '3P #1', (df_main_selection['3PA #1'] * df_main_selection['3P% #1']).round(1))
+        df_main_selection.insert(15, 'FT #1', (df_main_selection['FTA #1'] * df_main_selection['FT% #1']).round(1))
+
+        df_main_selection.rename(columns={'Home team score': 'HTS',
+                                          'Outside team score': 'OTS',
+                                          'Total points': 'TOTAL',
+                                          'Victory flag': 'VF',}, inplace=True)
 
         df_show = df_main_selection.tail(games_to_show)[[
                                                           'Date',
                                                           'Team at home',
                                                           'Team away',
-                                                          'Home team score',
-                                                          'Outside team score',
-                                                          'Total points',
+                                                          'HTS',
+                                                          'OTS',
+                                                          'TOTAL',
                                                           'FGA #1',
+                                                          '2P #1',
                                                           '2PA #1',
                                                           '2P% #1',
+                                                          '3P #1',
                                                           '3PA #1',
                                                           '3P% #1',
+                                                          'FT #1',
                                                           'FTA #1',
                                                           'FT% #1',
                                                           'ORB #1',
@@ -143,8 +223,10 @@ class LastGamesTab:
                                                           'STL #1',
                                                           'BLK #1',
                                                           'TOV #1',
-                                                          'Victory flag',
+                                                          'VF',
                                                           ]]
+
+
 
         columns_header = list(df_show.columns.values)
         columns = len(columns_header)
@@ -152,23 +234,29 @@ class LastGamesTab:
         rows = len(results)
         rows_header = [str(x) for x in range(1, rows+1)]
 
-        index_of_victory = columns_header.index('Victory flag')
-        columns_header.remove('Victory flag')
-
         self.host.TableWidget_LastGames.setRowCount(rows)
-        self.host.TableWidget_LastGames.setColumnCount(columns-1)
+        self.host.TableWidget_LastGames.setColumnCount(columns)
         self.host.TableWidget_LastGames.setHorizontalHeaderLabels(columns_header)
         self.host.TableWidget_LastGames.setVerticalHeaderLabels(rows_header)
 
+        colors_list = self.load_colors()
+
+        colors_dict = {}
+        for x in range(len(results)):
+            for y in range(len(colors_list)):
+                if ((str(results[x][0]) == str(colors_list[y][0]))
+                        & (results[x][1] == colors_list[y][1])
+                        & (results[x][2] == colors_list[y][2])):
+                    colors_dict[x] = colors_list[y][3]
+
         for j in range(rows):
-            if results[j][index_of_victory] == 0:
-                color = QColor(255, 182, 193)
-            else:
-                color = QColor(144, 238, 144)
-            for i in range(columns-1):
+            for i in range(columns):
                 item = QTableWidgetItem()
                 item.setText(str(results[j][i]))
-                item.setBackground(color)
+                item.setBackground(QColor(235, 235, 235))
+                if j in colors_dict:
+                    r, g, b, _ = colors_dict[j].replace('(', '').replace(')', '').split(',')
+                    item.setBackground(QColor(int(r), int(g), int(b)))
 
                 self.host.TableWidget_LastGames.setItem(j, i, item)
 
@@ -176,7 +264,7 @@ class LastGamesTab:
         self.host.TableWidget_LastGames.resizeColumnsToContents()
 
         df_for_median = df_show.copy()
-        df_for_median.drop(columns=['Date', 'Team at home', 'Team away', 'Victory flag'], axis=1, inplace=True)
+        df_for_median.drop(columns=['Date', 'Team at home', 'Team away', 'VF'], axis=1, inplace=True)
         df_median_stat = df_for_median.agg([np.median])
         median_data = [list(x) for x in df_median_stat.values]
 
@@ -201,15 +289,6 @@ class LastGamesTab:
 
         self.host.tableWidget_LastGamesAvg.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.host.tableWidget_LastGamesAvg.resizeColumnsToContents()
-
-
-class AnalysisTab:
-    def __init__(self, host):
-        self.host = host
-        try:
-            pass
-        except:
-            pass
 
 
 class ModelTab:
@@ -256,7 +335,7 @@ class ModelTab:
             # Устанавливаем имя прогнозируемого параметра на лэйбл
             self.host.label_predicted_param.setText(self.prediction_assignment['target'])
             # Устанавливаем результат прогнозирования параметра в соответствующую графу
-            self.host.lineEdit_predicted_value.setText(str(self.prediction_results['y_calc']))
+            self.host.lineEdit_predicted_value.setText(str(np.round(self.prediction_results['y_calc'], 3)))
             # Выводим данные использованные для обучения и тестовые данные на график
             # сопоставления прогнозного и фактического параметра
             self.prediction_results['model'].plot_knr_training_results(self.model_mpl_canvas.axes)
@@ -335,7 +414,20 @@ class ModelTab:
 
         x_accepted = [self.prediction_results['y_calc'], self.prediction_results['y_calc']]
         y_accepted = [0, 25]
-        self.distribution_mpl_canvas.axes.plot(x_accepted, y_accepted, label='predicted val.', color='black')
+        self.distribution_mpl_canvas.axes.plot(x_accepted,
+                                               y_accepted,
+                                               label='predicted val.',
+                                               color='red',
+                                               linestyle='dashed',
+                                               )
+
+        accepted_val = str(np.round(self.prediction_results['y_calc'], 3))
+
+        self.distribution_mpl_canvas.axes.annotate(f'Accepted value={accepted_val}',
+                                              xy=(x_accepted[0], 10),
+                                              xytext=(x_accepted[0]+x_accepted[0]*0.05, 15),
+                                              arrowprops=dict(facecolor='black', shrink=0.05),
+                                              )
 
         self.distribution_mpl_canvas.axes.set_title(f"Distribution of {self.prediction_assignment['target']}")
         self.distribution_mpl_canvas.axes.set_xlabel(f"{self.prediction_assignment['target']}")
@@ -421,12 +513,8 @@ class TournamentTab:
             [params.pop(20) for x in range(19)]
         elif self.host.radioButton_tournament_oponent.isChecked():
             collorification = False
-            print(params_values_array[20])
-            print(params[20])
             [params_values_array.pop(1) for x in range(19)]
             [params.pop(1) for x in range(19)]
-            print(params_values_array[1])
-            print(params[1])
         else:
             self.host.textEdit_parsing_information.insertPlainText('some Other cases of team/opposite-all plotting')
             collorification = True

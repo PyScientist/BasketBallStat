@@ -1,5 +1,4 @@
 import sys
-import os
 import pandas as pd
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
@@ -9,7 +8,9 @@ from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
 from parsing_run import perform_parse
 
-from ui_funct import TournamentTab, LastGamesTab, AnalysisTab, ModelTab
+from teams_list_import_app import parse_teams_list
+
+from ui_tabs import TournamentTab, LastGamesTab, ModelTab
 
 
 class WorkerPerformParse(QObject):
@@ -44,11 +45,19 @@ class Ui(QMainWindow):
         self.pushButton_parse_results.clicked.connect(self.launch_parsing)
         self.lineEdit_file_with_parsing_assignment.textEdited.connect(self.load_assignment_file)
         self.lineEdit_file_with_parsing_results.textEdited.connect(self.load_init_df)
-
+        self.pushButton_Update_parsing_assignment_file.clicked.connect(self.update_parsing_assignment)
         self.tournament_tab = TournamentTab(self)
         self.last_games_tab = LastGamesTab(self)
         self.model_tab = ModelTab(self)
-        self.analysis_tab = AnalysisTab(self)
+        self.lineEdit_league_for_parsing.setText('https://www.asia-basket.com'
+                                                 '/South-Korea/basketball-League-KBL-Teams.aspx')
+
+    def update_parsing_assignment(self):
+        path_for_league = self.lineEdit_league_for_parsing.text()
+        assignment_path = self.lineEdit_file_with_parsing_assignment.text()
+        parse_teams_list(path_for_league, assignment_path)
+        self.textEdit_parsing_information.insertPlainText('Parsing assignment file has successfully updated...')
+        self.load_assignment_file()
 
     def update_according_leagues(self):
         self.comboBox_choose_season.clear()
@@ -142,8 +151,12 @@ class Ui(QMainWindow):
         self.thread_perform_parse.finished.connect(lambda: self.pushButton_parse_results.setEnabled(True))
 
 
-if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     ui = Ui()
     ui.show()
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    pass
