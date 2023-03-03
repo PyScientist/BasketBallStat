@@ -1,3 +1,4 @@
-/jupyter/
-/parse_content/
-/parse_results_old/
+parse_content/
+parse_results/
+venv/
+__pycache__

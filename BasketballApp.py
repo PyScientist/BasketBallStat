@@ -35,9 +35,15 @@ class Ui(QMainWindow):
         self.current_assignment_df = None
         self.init_df = None
 
+        self.showMaximized()
         self.setWindowTitle('BasketballAnalysisApp')
         self.lineEdit_file_with_parsing_assignment.setText('./Parsing_assignment.xlsx')
         self.lineEdit_file_with_parsing_results.setText('./Parsing_results.xlsx')
+
+        self.comboBox_choose_league.setMaxVisibleItems(35)
+        self.comboBox_choose_season.setMaxVisibleItems(35)
+        self.comboBox_choose_team.setMaxVisibleItems(35)
+
         self.pushButton_choose_assignment_file.clicked.connect(self.choose_assignment_file)
         self.pushButton_choose_results_file.clicked.connect(self.choose_results_file)
         self.load_assignment_file()
@@ -78,6 +84,17 @@ class Ui(QMainWindow):
             self.init_df = pd.read_excel(io=file_path,
                                          engine='openpyxl',
                                          sheet_name='Results')
+
+            # Добавляем производные столбцы недоступные ранее
+            self.init_df['FGA #1'] = (self.init_df['2PA #1'] + self.init_df['3PA #1']).round(0)
+            self.init_df['2P #1'] = (self.init_df['2PA #1'] * self.init_df['2P% #1']/100).round(0)
+            self.init_df['3P #1'] = (self.init_df['3PA #1'] * self.init_df['3P% #1']/100).round(0)
+            self.init_df['FT #1'] = (self.init_df['FTA #1'] * self.init_df['FT% #1']/100).round(0)
+            self.init_df['FGA #2'] = (self.init_df['2PA #2'] + self.init_df['3PA #2']).round(0)
+            self.init_df['2P #2'] = (self.init_df['2PA #2'] * self.init_df['2P% #2']/100).round(0)
+            self.init_df['3P #2'] = (self.init_df['3PA #2'] * self.init_df['3P% #2']/100).round(0)
+            self.init_df['FT #2'] = (self.init_df['FTA #2'] * self.init_df['FT% #2']/100).round(0)
+
             self.textEdit_parsing_information.insertPlainText(f'\nData from {file_path} was successfully loaded...')
         except:
             self.textEdit_parsing_information.insertPlainText(f'\nSome error occurred while loading {file_path}')

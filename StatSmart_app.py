@@ -27,11 +27,15 @@ class TeamStatSmart:
 
         self.op_team = op_team  # Название команды - соперника анализируемой команды
 
-        params = ['2PA #1', '2P% #1', '3PA #1', '3P% #1', 'FTA #1', 'FT% #1',
+        params = ['2P #1', '2PA #1', '3P #1',
+                  '2P% #1', '3PA #1', '3P% #1',
+                  'FT #1', 'FTA #1', 'FT% #1',
                   'ORB #1', 'DRB #1', 'TRB #1', 'AST #1', 'F #1',
                   'STL #1', 'BLK #1', 'TOV #1', 'PTS #1', 'Total points']
 
-        params_subs = ['2PA #2', '2P% #2', '3PA #2', '3P% #2', 'FTA #2', 'FT% #2',
+        params_subs = ['2P #2', '2PA #2', '2P% #2',
+                       '3P #2', '3PA #2', '3P% #2',
+                       'FT #2', 'FTA #2', 'FT% #2',
                        'ORB #2', 'DRB #2', 'TRB #2', 'AST #2', 'F #2',
                        'STL #2', 'BLK #2', 'TOV #2', 'PTS #2', 'Total points']
 
@@ -117,13 +121,18 @@ class DataForPrediction:
         self.prepare_prediction_data()
 
     def prepare_prediction_data(self):
+
         # Перечислим параметры для которых будут собираться значения для анализируемой команды
-        params = ['2PA #1', '2P% #1', '3PA #1', '3P% #1', 'FTA #1', 'FT% #1',
+        params = ['2P #1', '2PA #1', '3P #1',
+                  '2P% #1', '3PA #1', '3P% #1',
+                  'FT #1', 'FTA #1', 'FT% #1',
                   'ORB #1', 'DRB #1', 'TRB #1', 'AST #1', 'F #1',
                   'STL #1', 'BLK #1', 'TOV #1', 'PTS #1', 'Total points']
 
-        # Перечислим параметры для которых будут собираться значения для команды соперника
-        params_subs = ['2PA #2', '2P% #2', '3PA #2', '3P% #2', 'FTA #2', 'FT% #2',
+        # Перечислим параметры которые будут собираться значения для команды соперника
+        params_subs = ['2P #2', '2PA #2', '2P% #2',
+                       '3P #2', '3PA #2', '3P% #2',
+                       'FT #2', 'FTA #2', 'FT% #2',
                        'ORB #2', 'DRB #2', 'TRB #2', 'AST #2', 'F #2',
                        'STL #2', 'BLK #2', 'TOV #2', 'PTS #2']
 
@@ -212,7 +221,7 @@ def perform_single_team_analysis(team: str, df_main, next_play_date=datetime.dat
     end_counter = -time_frames[1]
     shape = 0
     iterations = 0
-    while ((shape < 10) and (iterations < 10)):
+    while (shape < 10) and (iterations < 10):
         df_team_to_analyse = df_main[df_main['Team #1'] == team].copy()
 
         df_team_to_analyse['TimeShift'] = [calc_time_shift(date, next_play_date) for date in df_team_to_analyse['Date']]
@@ -222,28 +231,29 @@ def perform_single_team_analysis(team: str, df_main, next_play_date=datetime.dat
                                                 (df_team_to_analyse['TimeShift'] < start_counter)]
         shape = df_team_to_analyse.shape[0]
         end_counter -= 20
-        iterations+=1
+        iterations += 1
 
     # Убеждаемся, что видим все записи
     printing_func(df_team_to_analyse.columns.values)
     # Дополнительно смотрим сколько игр сыграно командами.
     printing_func('For {} there were ({}) games played'.format(team, df_team_to_analyse.shape[0]))
-    # Настраиваем с учетом каких значимых фитч и целевых показателей будет выполняться анализ.
-    important_features = ['2PA #1', '2P% #1', '3PA #1', '3P% #1',
-                          'FTA #1', 'FT% #1', 'ORB #1', 'DRB #1',
+
+    # Настраиваем с учетом каких значимых фич и целевых показателей будет выполняться анализ.
+    important_features = ['2P #1', '2PA #1', '2P% #1', '3P #1', '3PA #1', '3P% #1',
+                          'FT #1', 'FTA #1', 'FT% #1', 'ORB #1', 'DRB #1',
                           'TRB #1', 'AST #1', 'F #1', 'STL #1', 'BLK #1', 'TOV #1', 'PTS #1', 'Home flag']
 
-    important_features_of_second_team = ['2PA #2', '2P% #2', '3PA #2', '3P% #2',
-                                         'FTA #2', 'FT% #2', 'ORB #2', 'DRB #2', 'TRB #2',
+    important_features_of_second_team = ['2P #2', '2PA #2', '2P% #2', '3P #2', '3PA #2', '3P% #2',
+                                         'FT #2', 'FTA #2', 'FT% #2', 'ORB #2', 'DRB #2', 'TRB #2',
                                          'AST #2', 'F #2', 'STL #2', 'BLK #2', 'TOV #2', 'PTS #2']
 
-    chosen_targets = ['Total points', 'PTS #1', 'Victory flag', 'PTS #2',
-                      '2PA #1', '2P% #1', '3PA #1', '3P% #1',
-                      'FTA #1', 'FT% #1', 'ORB #1', 'DRB #1',
+    chosen_targets = ['Total points', 'PTS #1', 'PTS #2', 'Victory flag',
+                      '2P #1', '2PA #1', '2P% #1', '3P #1', '3PA #1', '3P% #1',
+                      'FT #1', 'FTA #1', 'FT% #1', 'ORB #1', 'DRB #1',
                       'TRB #1', 'AST #1', 'F #1', 'STL #1', 'BLK #1', 'TOV #1',
-                      '2PA #2', '2P% #2', '3PA #2', '3P% #2',
-                      'FTA #2', 'FT% #2', 'ORB #2', 'DRB #2', 'TRB #2',
-                      'AST #2', 'F #2', 'STL #2', 'BLK #2', 'TOV #2']
+                      '2P #2', '2PA #2', '2P% #2', '3P #2', '3PA #2', '3P% #2',
+                      'FT #2', 'FTA #2', 'FT% #2', 'ORB #2', 'DRB #2',
+                      'TRB #2', 'AST #2', 'F #2', 'STL #2', 'BLK #2', 'TOV #2']
 
     chosen_params = []
     chosen_params.extend(important_features)

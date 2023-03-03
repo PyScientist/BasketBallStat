@@ -3,9 +3,13 @@ import pandas as pd
 
 import os
 
-from PyQt5.QtWidgets import QTableWidgetItem, QAbstractScrollArea, QSizePolicy, QVBoxLayout, QColorDialog
+from PyQt5.QtWidgets import QTableWidgetItem, QAbstractScrollArea, \
+    QSizePolicy, QVBoxLayout, QColorDialog, QTableWidget, QDialog
+
+from PyQt5.QtWidgets import QLabel
+
 from PyQt5.QtGui import QFont, QColor, QBrush
-from PyQt5.QtCore import QDate
+from PyQt5.QtCore import QDate, Qt, pyqtSignal, QEvent
 from StatSmart_app import calc_time_shift, convert_date
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -15,6 +19,67 @@ from matplotlib import pyplot as plt
 import datetime
 
 from PredictionModels_app import prepare_data_for_prediction, make_prediction, add_grid
+
+
+class CustomChooseColourDialog(QDialog):
+
+    def __init__(self):
+        super().__init__()
+        self.chosen_color = None
+        self.resize(500, 200)
+        self.setWindowTitle("Choose color dialog. Left click on the color to choose!")
+        self.vbox = QVBoxLayout()
+        self.setLayout(self.vbox)
+        self.label_first_color = QLabelClickableLeft()
+        self.label_second_color = QLabelClickableLeft()
+        self.label_first_color.setStyleSheet("background-color: #90EE90;")
+        self.label_first_color.resize(100, 100)
+        self.label_second_color.setStyleSheet("background-color: #FFB6C1;")
+        self.label_second_color.resize(100, 100)
+        self.vbox.addWidget(self.label_first_color)
+        self.vbox.addWidget(self.label_second_color)
+        self.label_first_color.ClickedLeftButton.connect(self.set_first_color)
+        self.label_second_color.ClickedLeftButton.connect(self.set_second_color)
+        self.exec()
+
+    def set_first_color(self):
+        self.chosen_color = QColor(144, 238, 144)
+        self.close()
+
+    def set_second_color(self):
+        self.chosen_color = QColor(255, 182, 193)
+        self.close()
+
+
+class QLabelClickableLeft(QLabel):
+    ClickedLeftButton = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.installEventFilter(self)
+
+    # Reimplement eventFilter method to catch left click of the mouse on it
+    def eventFilter(self, widget, event):
+        if event.type() == QEvent.MouseButtonPress:
+            if event.button() == Qt.LeftButton:
+                self.ClickedLeftButton.emit()
+        return QLabel.eventFilter(self, widget, event)
+
+
+class QTableWidgetRightMouthClicked(QTableWidget):
+    RightButtonClicked = pyqtSignal(int, int)
+
+    def __init__(self):
+        super().__init__()
+        self.viewport().installEventFilter(self)
+
+    # Reimplement eventFilter method to catch RightButton mouse pressing on particular item
+    def eventFilter(self, widget, event):
+        if event.type() == QEvent.MouseButtonPress:
+            if event.button() == Qt.RightButton:
+                index = self.indexAt(event.pos())
+                self.RightButtonClicked.emit(index.row(), index.column())
+        return QTableWidget.eventFilter(self, widget, event)
 
 
 class MyMplCanvas(FigureCanvasQTAgg):
@@ -72,16 +137,41 @@ class LastGamesTab:
             self.host.pushButton_show_LastGames_details.clicked.connect(self.fill_table)
             self.host.spinBox_games_ammount_to_show.setValue(10)
             self.host.spinBox_games_ammount_to_show.valueChanged.connect(self.fill_table)
+
+            self.host.comboBox_LastGames_choose_league.setMaxVisibleItems(35)
+            self.host.comboBox_LastGames_choose_team.setMaxVisibleItems(35)
+
+            # Так как нужно переопределить класс таблицы для последних игр для активизации правой кнопки
+            # необходимо удалить таблицу и заново положить в размещение новую с переопределенным методом
+            self.host.verticalLayoutLastGames.removeWidget(self.host.TableWidget_LastGames)
+            self.host.TableWidget_LastGames.deleteLater()
+            self.host.TableWidget_LastGames = None
+            self.host.TableWidget_LastGames = QTableWidgetRightMouthClicked()
+            self.host.verticalLayoutLastGames.addWidget(self.host.TableWidget_LastGames)
+            # Connect the signal from right mouse button to function which call Dialog
+            self.host.TableWidget_LastGames.RightButtonClicked.connect(self.choose_color_simple_dialog)
+            # Connect double-clicked signal to choose color by two from available options
             self.host.TableWidget_LastGames.itemDoubleClicked.connect(self.choose_color)
             self.host.pushButton_save_colors.clicked.connect(self.save_color_scheme)
-
+            self.host.pushButton_save_colors.setGeometry(200, 150, 100, 100)
+            # Set initial colors to bottom pallets for color choose
             self.host.label_set_color1.setStyleSheet("background-color: #90EE90;")
             self.host.label_set_color2.setStyleSheet("background-color: #FFB6C1;")
             self.host.label_set_color3.setStyleSheet("background-color: #0078D7;")
 
-        except Exception:
+        except Exception as err:
+            print(err)
             self.host.textEdit_parsing_information.insertPlainText(f'\nSome error occurred '
                                                                    f'while loading LastGames tab')
+
+    def choose_color_simple_dialog(self, row, column):
+        dialog = CustomChooseColourDialog()
+        columns = self.host.TableWidget_LastGames.columnCount()
+        if dialog.chosen_color is not None:
+            for col in range(columns):
+                self.host.TableWidget_LastGames.item(row, col).setBackground(QBrush(dialog.chosen_color))
+        del dialog
+
     def choose_color(self, item):
         if self.host.checkBox_use_standart_color.isChecked():
             if self.host.radioButton_set_color1.isChecked():
@@ -193,16 +283,21 @@ class LastGamesTab:
         df_main_selection['2P% #1'] = (df_main_selection['2P% #1'] / 100).round(3)
         df_main_selection['3P% #1'] = (df_main_selection['3P% #1'] / 100).round(3)
         df_main_selection['FT% #1'] = (df_main_selection['FT% #1'] / 100).round(3)
-        df_main_selection.insert(7, 'FGA #1', (df_main_selection['2PA #1'] + df_main_selection['3PA #1']).round(1))
-        df_main_selection.insert(7, '2P #1', (df_main_selection['2PA #1'] * df_main_selection['2P% #1']).round(1))
-        df_main_selection.insert(10, '3P #1', (df_main_selection['3PA #1'] * df_main_selection['3P% #1']).round(1))
-        df_main_selection.insert(15, 'FT #1', (df_main_selection['FTA #1'] * df_main_selection['FT% #1']).round(1))
+
+        # Так как в исходной таблице уже есть колонки 'FGA #1', '2P #1', '3P #1', 'FT #1' удаляем их
+        df_main_selection.drop(columns=['FGA #1', '2P #1', '3P #1', 'FT #1'], axis=1, inplace=True)
+        # Рассчитываем заново уже с нужным округлением и помещаем на свои места
+        df_main_selection.insert(7, 'FGA #1', (df_main_selection['2PA #1'] + df_main_selection['3PA #1']).astype(int))
+        df_main_selection.insert(7, '2P #1', (df_main_selection['2PA #1'] * df_main_selection['2P% #1']).astype(int))
+        df_main_selection.insert(10, '3P #1', (df_main_selection['3PA #1'] * df_main_selection['3P% #1']).astype(int))
+        df_main_selection.insert(15, 'FT #1', (df_main_selection['FTA #1'] * df_main_selection['FT% #1']).astype(int))
 
         df_main_selection.rename(columns={'Home team score': 'HTS',
                                           'Outside team score': 'OTS',
                                           'Total points': 'TOTAL',
                                           'Victory flag': 'VF',}, inplace=True)
 
+        # Получаем последние n строк из таблицы
         df_show = df_main_selection.tail(games_to_show)[[
                                                           'Date',
                                                           'Team at home',
@@ -229,8 +324,11 @@ class LastGamesTab:
                                                           'BLK #1',
                                                           'TOV #1',
                                                           'VF',
-                                                          ]]
-
+                                                           ]]
+        # Сортируем по дате в убывающем порядке
+        df_show.sort_values(by=['Date'],
+                            ascending=False,
+                            inplace=True)
 
 
         columns_header = list(df_show.columns.values)
@@ -244,6 +342,18 @@ class LastGamesTab:
         self.host.TableWidget_LastGames.setHorizontalHeaderLabels(columns_header)
         self.host.TableWidget_LastGames.setVerticalHeaderLabels(rows_header)
 
+        header_font = QFont()
+        header_font.setPointSize(10)
+        self.host.TableWidget_LastGames.horizontalHeader().setFont(header_font)
+        header_font_vert = QFont()
+        header_font_vert.setPointSize(5)
+        self.host.TableWidget_LastGames.verticalHeader().setFont(header_font_vert)
+
+        self.host.TableWidget_LastGames.horizontalHeader().setStyleSheet("color: rgb(153, 0, 0); "
+                                                                                "background-color: rgb(238, 238, 238)")
+        self.host.TableWidget_LastGames.verticalHeader().setStyleSheet("color: rgb(153, 0, 0); "
+                                                                                "background-color: rgb(238, 238, 238)")
+
         colors_list = self.load_colors()
 
         colors_dict = {}
@@ -254,11 +364,16 @@ class LastGamesTab:
                         & (results[x][2] == colors_list[y][2])):
                     colors_dict[x] = colors_list[y][3]
 
+
+        item_font = QFont()
+        item_font.setPointSize(7)
+
         for j in range(rows):
             for i in range(columns):
                 item = QTableWidgetItem()
                 item.setText(str(results[j][i]))
                 item.setBackground(QColor(235, 235, 235))
+                item.setFont(item_font)
                 if j in colors_dict:
                     r, g, b, _ = colors_dict[j].replace('(', '').replace(')', '').split(',')
                     item.setBackground(QColor(int(r), int(g), int(b)))
@@ -267,6 +382,7 @@ class LastGamesTab:
 
         self.host.TableWidget_LastGames.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.host.TableWidget_LastGames.resizeColumnsToContents()
+        self.host.TableWidget_LastGames.resizeRowsToContents()
 
         df_for_median = df_show.copy()
         df_for_median.drop(columns=['Date', 'Team at home', 'Team away', 'VF'], axis=1, inplace=True)
@@ -285,6 +401,11 @@ class LastGamesTab:
         self.host.tableWidget_LastGamesAvg.setColumnCount(median_columns)
         self.host.tableWidget_LastGamesAvg.setHorizontalHeaderLabels(median_columns_header)
         self.host.tableWidget_LastGamesAvg.setVerticalHeaderLabels(median_rows_headers)
+
+        self.host.tableWidget_LastGamesAvg.horizontalHeader().setStyleSheet("color: rgb(153, 0, 0); "
+                                                                                "background-color: rgb(238, 238, 238)")
+        self.host.tableWidget_LastGamesAvg.verticalHeader().setStyleSheet("color: rgb(153, 0, 0); "
+                                                                                "background-color: rgb(238, 238, 238)")
 
         for j in range(median_rows):
             for i in range(median_columns):
@@ -311,6 +432,11 @@ class ModelTab:
             self.set_teams_lists()
             self.set_params_to_predict()
             self.host.comboBox_choose_league_prognose.currentTextChanged.connect(self.set_teams_lists)
+            self.host.comboBox_choose_league_prognose.setMaxVisibleItems(35)
+            self.host.comboBox_choose_team_prognose.setMaxVisibleItems(35)
+            self.host.comboBox_choose_opponent_prognose.setMaxVisibleItems(35)
+            self.host.comboBox_param_to_predict.setMaxVisibleItems(35)
+
             self.host.dateEdit_next_game_prognose.setDate(QDate(datetime.datetime.today()))
             self.host.pushButton_do_prognose.clicked.connect(self.do_prediction)
         except:
@@ -323,6 +449,7 @@ class ModelTab:
                 home_flag = 1
             else:
                 home_flag = 0
+
             self.prediction_assignment = prepare_data_for_prediction(
                 target=self.host.comboBox_param_to_predict.currentText(),
                 league=self.host.comboBox_choose_league_prognose.currentText(),
@@ -355,13 +482,17 @@ class ModelTab:
             pass
 
     def show_parameters_for_prediction(self, dfp):
+        self.host.lineEdit_2P1.setText(str(np.round(dfp.data_for_prediction['2P #1'].values[0], 1)))
         self.host.lineEdit_2PA1.setText(str(np.round(dfp.data_for_prediction['2PA #1'].values[0], 1)))
         self.host.lineEdit_2PP1.setText(str(np.round(dfp.data_for_prediction['2P% #1'].values[0]/100, 3)))
+        self.host.lineEdit_3P1.setText(str(np.round(dfp.data_for_prediction['3P #1'].values[0], 1)))
         self.host.lineEdit_3PA1.setText(str(np.round(dfp.data_for_prediction['3PA #1'].values[0], 1)))
         self.host.lineEdit_3PP1.setText(str(np.round(dfp.data_for_prediction['3P% #1'].values[0]/100, 3)))
+        self.host.lineEdit_FT1.setText(str(np.round(dfp.data_for_prediction['FT #1'].values[0], 1)))
         self.host.lineEdit_FTA1.setText(str(np.round(dfp.data_for_prediction['FTA #1'].values[0], 1)))
         self.host.lineEdit_FTP1.setText(str(np.round(dfp.data_for_prediction['FT% #1'].values[0]/100, 3)))
         self.host.lineEdit_ORB1.setText(str(np.round(dfp.data_for_prediction['ORB #1'].values[0], 1)))
+        self.host.lineEdit_DRB1.setText(str(np.round(dfp.data_for_prediction['DRB #1'].values[0], 1)))
         self.host.lineEdit_TRB1.setText(str(np.round(dfp.data_for_prediction['TRB #1'].values[0], 1)))
         self.host.lineEdit_AST1.setText(str(np.round(dfp.data_for_prediction['AST #1'].values[0], 1)))
         self.host.lineEdit_F1.setText(str(np.round(dfp.data_for_prediction['F #1'].values[0], 1)))
@@ -369,13 +500,17 @@ class ModelTab:
         self.host.lineEdit_BLK1.setText(str(np.round(dfp.data_for_prediction['BLK #1'].values[0], 1)))
         self.host.lineEdit_TOV1.setText(str(np.round(dfp.data_for_prediction['TOV #1'].values[0], 1)))
         self.host.lineEdit_PTS1.setText(str(np.round(dfp.data_for_prediction['PTS #1'].values[0], 1)))
+        self.host.lineEdit_2P2.setText(str(np.round(dfp.data_for_prediction['2P #2'].values[0], 1)))
         self.host.lineEdit_2PA2.setText(str(np.round(dfp.data_for_prediction['2PA #2'].values[0], 1)))
         self.host.lineEdit_2PP2.setText(str(np.round(dfp.data_for_prediction['2P% #2'].values[0]/100, 3)))
+        self.host.lineEdit_3P2.setText(str(np.round(dfp.data_for_prediction['3P #2'].values[0], 1)))
         self.host.lineEdit_3PA2.setText(str(np.round(dfp.data_for_prediction['3PA #2'].values[0], 1)))
         self.host.lineEdit_3PP2.setText(str(np.round(dfp.data_for_prediction['3P% #2'].values[0]/100, 3)))
+        self.host.lineEdit_FT2.setText(str(np.round(dfp.data_for_prediction['FT #2'].values[0], 1)))
         self.host.lineEdit_FTA2.setText(str(np.round(dfp.data_for_prediction['FTA #2'].values[0], 1)))
         self.host.lineEdit_FTP2.setText(str(np.round(dfp.data_for_prediction['FT% #2'].values[0]/100, 3)))
         self.host.lineEdit_ORB2.setText(str(np.round(dfp.data_for_prediction['ORB #2'].values[0], 1)))
+        self.host.lineEdit_DRB2.setText(str(np.round(dfp.data_for_prediction['DRB #2'].values[0], 1)))
         self.host.lineEdit_TRB2.setText(str(np.round(dfp.data_for_prediction['TRB #2'].values[0], 1)))
         self.host.lineEdit_AST2.setText(str(np.round(dfp.data_for_prediction['AST #2'].values[0], 1)))
         self.host.lineEdit_F2.setText(str(np.round(dfp.data_for_prediction['F #2'].values[0], 1)))
@@ -470,6 +605,8 @@ class TournamentTab:
         self.team_to_highlight = None
         self.param_to_filter = 'WINS'
         try:
+            self.host.comboBo_choose_league_for_turnament.setMaxVisibleItems(35)
+            self.host.comboBox_choose_season_for_turnament.setMaxVisibleItems(35)
             self.host.comboBox_choose_season_for_turnament.clear()
             self.host.comboBo_choose_league_for_turnament.addItems(self.host.init_df['League'].unique())
             self.update_according_leagues_tournament_tab(self.host.init_df)
@@ -544,9 +681,11 @@ class TournamentTab:
                                                                                 "background-color: rgb(238, 238, 238)")
 
         header_font = QFont()
-        header_font.setPointSize(8)
+        header_font.setPointSize(7)
         self.host.tableWidget_tournament_table.horizontalHeader().setFont(header_font)
-        self.host.tableWidget_tournament_table.verticalHeader().setFont(header_font)
+        header_font_vertical = QFont()
+        header_font_vertical.setPointSize(6)
+        self.host.tableWidget_tournament_table.verticalHeader().setFont(header_font_vertical)
 
         self.host.tableWidget_tournament_table.itemClicked.connect(self.set_sorting_and_higlighting)
 
@@ -560,9 +699,17 @@ class TournamentTab:
         else:
             row_to_highlight = list(rows_header).index(self.team_to_highlight)
 
+        self.host.tableWidget_tournament_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.host.tableWidget_tournament_table.resizeColumnsToContents()
+        self.host.tableWidget_tournament_table.verticalHeader().setDefaultSectionSize(5)
+
+        item_font = QFont()
+        item_font.setPointSize(7)
+
         for j in range(rows):
             for i in range(columns):
                 item = QTableWidgetItem()
+                item.setFont(item_font)
                 if collorification == True:
                     if (i >= 0) and (i <= 18):
                         item.setBackground(QColor(176, 224, 230))
@@ -581,9 +728,6 @@ class TournamentTab:
                 item.setText(str(params_values_array[i+1, j]))
                 # The first argument of seItem is row, the second is column
                 self.host.tableWidget_tournament_table.setItem(j, i, item)
-
-        self.host.tableWidget_tournament_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
-        self.host.tableWidget_tournament_table.resizeColumnsToContents()
 
         self.team_to_highlight = None
         self.param_to_filter = 'WINS'
@@ -650,6 +794,9 @@ class TournamentTab:
         df_main_selection['2P% #1'] = df_main_selection['2P% #1']/100
         df_main_selection['3P% #1'] = df_main_selection['3P% #1']/100
         df_main_selection['FT% #1'] = df_main_selection['FT% #1']/100
+        # Так как в исходной таблице уже есть колонки 'FGA #1', '2P #1', '3P #1', 'FT #1' удаляем их
+        df_main_selection.drop(columns=['FGA #1', '2P #1', '3P #1', 'FT #1'], axis=1, inplace=True)
+        # Рассчитываем заново уже с нужным округлением и помещаем на свои места
         df_main_selection.insert(4, 'FGA #1', df_main_selection['2PA #1'] + df_main_selection['3PA #1'])
         df_main_selection.insert(6, '2P #1', df_main_selection['2PA #1']*df_main_selection['2P% #1'])
         df_main_selection.insert(9, '3P #1', df_main_selection['3PA #1']*df_main_selection['3P% #1'])
@@ -657,6 +804,9 @@ class TournamentTab:
         df_main_selection['2P% #2'] = df_main_selection['2P% #2']/100
         df_main_selection['3P% #2'] = df_main_selection['3P% #2']/100
         df_main_selection['FT% #2'] = df_main_selection['FT% #2']/100
+        # Так как в исходной таблице уже есть колонки 'FGA #2', '2P #2', '3P #2', 'FT #2' удаляем их
+        df_main_selection.drop(columns=['FGA #2', '2P #2', '3P #2', 'FT #2'], axis=1, inplace=True)
+        # Рассчитываем заново уже с нужным округлением и помещаем на свои места
         df_main_selection.insert(24, 'FGA #2', df_main_selection['2PA #2'] + df_main_selection['3PA #2'])
         df_main_selection.insert(25, '2P #2', df_main_selection['2PA #2']*df_main_selection['2P% #2'])
         df_main_selection.insert(30, '3P #2', df_main_selection['3PA #2']*df_main_selection['3P% #2'])
