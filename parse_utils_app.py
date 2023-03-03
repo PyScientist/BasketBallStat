@@ -186,7 +186,7 @@ def prepare_to_parsing(assignment_file: str,
 
 def get_list_of_files_in_parse_results_for_particular_team(team: str) -> List:
     """look in corresponding folder for team which local html it got"""
-    return os.listdir(f'./parse_results/{team}/')
+    return os.listdir(f'parse_results/{team}/')
 
 
 def get_only_filename(full_path: str, team: str) -> str:

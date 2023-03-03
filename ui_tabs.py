@@ -88,8 +88,10 @@ class LastGamesTab:
                 color = QColor(144, 238, 144)
             elif self.host.radioButton_set_color2.isChecked():
                 color = QColor(255, 182, 193)
-            elif self.host.radioButton_set_color2.isChecked():
+            elif self.host.radioButton_set_color3.isChecked():
                 color = QColor(0, 120, 215)
+            else:
+                color = QColorDialog.getColor()
         else:
             color = QColorDialog.getColor()
         row = item.row()
@@ -98,40 +100,43 @@ class LastGamesTab:
             self.host.TableWidget_LastGames.item(row, col).setBackground(QBrush(color))
 
     def save_color_scheme(self):
-        colors_to_save = []
-        for row in range(self.host.TableWidget_LastGames.rowCount()):
-            list_row = []
-            for col in range(3):
-                list_row.append(self.host.TableWidget_LastGames.item(row, col).text())
-            rgb_color = self.host.TableWidget_LastGames.item(row, col).background().color().getRgb()
-            list_row.append(rgb_color)
-            colors_to_save.append(list_row)
-        headers = ['Date', 'Team at home', 'Team away', 'color']
-        colors_df = pd.DataFrame(colors_to_save, columns=[headers])
+        try:
+            colors_to_save = []
+            for row in range(self.host.TableWidget_LastGames.rowCount()):
+                list_row = []
+                for col in range(3):
+                    list_row.append(self.host.TableWidget_LastGames.item(row, col).text())
+                rgb_color = self.host.TableWidget_LastGames.item(row, col).background().color().getRgb()
+                list_row.append(rgb_color)
+                colors_to_save.append(list_row)
+            headers = ['Date', 'Team at home', 'Team away', 'color']
+            colors_df = pd.DataFrame(colors_to_save, columns=[headers])
 
-        if os.path.exists(self.color_file_path):
-            df = pd.read_csv(self.color_file_path, sep=';')
-            df_data = list(df[headers].values)
-            colors_df_data = list(colors_df[headers].values)
+            if os.path.exists(self.color_file_path):
+                df = pd.read_csv(self.color_file_path, sep=';')
+                df_data = list(df[headers].values)
+                colors_df_data = list(colors_df[headers].values)
 
-            indexes_to_delete = []
-            for x in range(len(df_data)):
-                for y in range(len(colors_df_data)):
-                    if ((df_data[x][0] == colors_df_data[y][0])
-                            & (df_data[x][1] == colors_df_data[y][1])
-                            & (df_data[x][2] == colors_df_data[y][2])):
-                        indexes_to_delete.append(x)
+                indexes_to_delete = []
+                for x in range(len(df_data)):
+                    for y in range(len(colors_df_data)):
+                        if ((df_data[x][0] == colors_df_data[y][0])
+                                & (df_data[x][1] == colors_df_data[y][1])
+                                & (df_data[x][2] == colors_df_data[y][2])):
+                            indexes_to_delete.append(x)
 
-            indexes_to_delete.sort(reverse=True)
-            for index in indexes_to_delete:
-                df_data.pop(index)
+                indexes_to_delete.sort(reverse=True)
+                for index in indexes_to_delete:
+                    df_data.pop(index)
 
-            df_data.extend(colors_df_data)
-            df_to_export = pd.DataFrame(df_data, columns=[headers])
-            df_to_export .to_csv(path_or_buf=self.color_file_path, sep=';', index=False)
+                df_data.extend(colors_df_data)
+                df_to_export = pd.DataFrame(df_data, columns=[headers])
+                df_to_export .to_csv(path_or_buf=self.color_file_path, sep=';', index=False)
 
-        else:
-            colors_df.to_csv(path_or_buf=self.color_file_path, sep=';', index=False)
+            else:
+                colors_df.to_csv(path_or_buf=self.color_file_path, sep=';', index=False)
+        except:
+            pass
 
     def load_colors(self):
         headers = ['Date', 'Team at home', 'Team away', 'color']

@@ -123,7 +123,7 @@ def pars_tournament_content(url: str, league: str, season: str) -> Dict:
 
     team = soup.find("td", class_="authorstitle gameschedule_full_tbl_team").contents
     if season == '2022-2023':
-        team = team[0].replace('\xa0', '').replace(' Games/Schedule (2022-2023)', '')
+        team = team[0].replace('\xa0', '').replace(' Games/Schedule (2022-2023)', '').replace(' Games/Schedule (2023)', '')
     elif (season == '2021-2022') or (season == '2020-2021') or (season == '2019-2020'):
         team = team[0].replace('\xa0', '').replace(' Games/Schedule', '')
 
