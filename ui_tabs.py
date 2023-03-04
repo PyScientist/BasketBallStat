@@ -537,7 +537,7 @@ class ModelTab:
     def make_distributions(self):
 
         limits_dict = {
-            'Total points': (160, 360),
+            'Total points': (100, 360),
             'PTS #1': (60, 160),
             'PTS #2': (60, 160),
             '2P #1': (10, 70),

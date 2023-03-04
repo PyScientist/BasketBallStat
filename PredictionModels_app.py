@@ -199,7 +199,7 @@ class AbstractBasketballModel:
             correlation_pairs = [[feature,
                                   round(float(correlation_series.loc[[feature]].values[0][0]), 2)] for feature in self.features]
 
-            correlation_strings = 'Features for prediction:'
+            correlation_strings = 'Features for prediction:\n'
             for i,item in enumerate(correlation_pairs):
                 correlation_strings += f'{i+1}) {item[0]} R = {item[1]};\n'
 

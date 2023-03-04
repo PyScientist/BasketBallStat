@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
@@ -30,7 +31,14 @@ class WorkerPerformParse(QObject):
 class Ui(QMainWindow):
     def __init__(self):
         super().__init__()
+
         uic.loadUi('./ui/basketball_app_main-window.ui', self)
+
+        dirs_to_create = ['./parse_content', './parse_results']
+        for directory in dirs_to_create:
+            CHECK_FOLDER = os.path.isdir(directory)
+            if not CHECK_FOLDER:
+                os.makedirs(directory)
 
         self.current_assignment_df = None
         self.init_df = None
