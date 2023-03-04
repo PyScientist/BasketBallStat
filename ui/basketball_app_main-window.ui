@@ -18,9 +18,9 @@
     <item>
      <layout class="QVBoxLayout" name="verticalLayout_central_layout">
       <item>
-       <widget class="QTabWidget" name="tabWidget">
+       <widget class="QTabWidget" name="CorrelationTab">
         <property name="currentIndex">
-         <number>2</number>
+         <number>4</number>
         </property>
         <widget class="QWidget" name="Parsing">
          <attribute name="title">
@@ -1587,6 +1587,29 @@
              </layout>
             </item>
            </layout>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="Correlations">
+         <attribute name="title">
+          <string>Correlations</string>
+         </attribute>
+         <layout class="QHBoxLayout" name="horizontalLayout_19">
+          <item>
+           <widget class="QWidget" name="widget_for_statistics" native="true">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>300</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>100000</width>
+              <height>100000</height>
+             </size>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>

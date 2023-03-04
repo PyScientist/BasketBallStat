@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 from PyQt5.QtWidgets import QTableWidgetItem, QAbstractScrollArea, \
-    QSizePolicy, QVBoxLayout, QColorDialog, QTableWidget, QDialog
+    QSizePolicy, QVBoxLayout, QColorDialog, QTableWidget, QDialog, QDialogButtonBox
 
 from PyQt5.QtWidgets import QLabel
 
@@ -443,43 +443,57 @@ class ModelTab:
             pass
 
     def do_prediction(self):
-        try:
-            # Готовим задание для прогнозирования
-            if self.host.checkBox_homeflag_for_prognose.isChecked():
-                home_flag = 1
-            else:
-                home_flag = 0
+        # If chosen the same teams then show alert dialog to notify that this happened
+        if self.host.comboBox_choose_team_prognose.currentText() == self.host.comboBox_choose_opponent_prognose.currentText():
+            dialog = QDialog()
+            dialog.setWindowTitle("!Alert!")
+            QBtn = QDialogButtonBox.Ok
+            dialog.buttonBox = QDialogButtonBox(QBtn)
+            dialog.buttonBox.accepted.connect(dialog.accept)
+            dialog.layout = QVBoxLayout()
+            message = QLabel("You have chosen the same team and it's opponent")
+            dialog.layout.addWidget(message)
+            dialog.layout.addWidget(dialog.buttonBox)
+            dialog.setLayout(dialog.layout)
+            dialog.exec()
+        else:
+            try:
+                # Готовим задание для прогнозирования
+                if self.host.checkBox_homeflag_for_prognose.isChecked():
+                    home_flag = 1
+                else:
+                    home_flag = 0
 
-            self.prediction_assignment = prepare_data_for_prediction(
-                target=self.host.comboBox_param_to_predict.currentText(),
-                league=self.host.comboBox_choose_league_prognose.currentText(),
-                team=self.host.comboBox_choose_team_prognose.currentText(),
-                op_team=self.host.comboBox_choose_opponent_prognose.currentText(),
-                home_flag=home_flag,
-                next_play_date=self.host.dateEdit_next_game_prognose.date().toPyDate(),
-                days_for_model=int(self.host.spinBox_days_backward_model.value()),
-                days_for_param=int(self.host.spinBox_days_backward_params.value()))
+                self.prediction_assignment = prepare_data_for_prediction(
+                    target=self.host.comboBox_param_to_predict.currentText(),
+                    league=self.host.comboBox_choose_league_prognose.currentText(),
+                    team=self.host.comboBox_choose_team_prognose.currentText(),
+                    op_team=self.host.comboBox_choose_opponent_prognose.currentText(),
+                    home_flag=home_flag,
+                    next_play_date=self.host.dateEdit_next_game_prognose.date().toPyDate(),
+                    days_for_model=int(self.host.spinBox_days_backward_model.value()),
+                    days_for_param=int(self.host.spinBox_days_backward_params.value()))
 
-            # Осуществляем прогноз
-            self.prediction_results = make_prediction(self.host.init_df, self.prediction_assignment)
-            # Показываем принятые параметры с учетом которых осуществлен прогноз
-            self.show_parameters_for_prediction(self.prediction_results['dfp'])
-            # Устанавливаем имя прогнозируемого параметра на лэйбл
-            self.host.label_predicted_param.setText(self.prediction_assignment['target'])
-            # Устанавливаем результат прогнозирования параметра в соответствующую графу
-            self.host.lineEdit_predicted_value.setText(str(np.round(self.prediction_results['y_calc'], 3)))
-            # Выводим данные использованные для обучения и тестовые данные на график
-            # сопоставления прогнозного и фактического параметра
-            self.prediction_results['model'].plot_knr_training_results(self.model_mpl_canvas.axes)
-            self.model_mpl_canvas.fig.canvas.draw()  # Перерисовываем холст рисунка matplotlib
-            # Выводим распределения параметра в заданном промежутке времени
-            # 1. За все время /
-            # 2. За выбранный промежуток для прогноза (промежуток для параметров) /
-            # 3. За выбранный промежуток для прогноза (только домашние матчи) /
-            # 4. Наносим на распределение прогнозное значение параметра.
-            self.make_distributions()
-        except:
-            pass
+                # Осуществляем прогноз
+                self.prediction_results = make_prediction(self.host.init_df, self.prediction_assignment)
+                # Показываем принятые параметры с учетом которых осуществлен прогноз
+                self.show_parameters_for_prediction(self.prediction_results['dfp'])
+                # Устанавливаем имя прогнозируемого параметра на лэйбл
+                self.host.label_predicted_param.setText(self.prediction_assignment['target'])
+                # Устанавливаем результат прогнозирования параметра в соответствующую графу
+                self.host.lineEdit_predicted_value.setText(str(np.round(self.prediction_results['y_calc'], 3)))
+                # Выводим данные использованные для обучения и тестовые данные на график
+                # сопоставления прогнозного и фактического параметра
+                self.prediction_results['model'].plot_knr_training_results(self.model_mpl_canvas.axes)
+                self.model_mpl_canvas.fig.canvas.draw()  # Перерисовываем холст рисунка matplotlib
+                # Выводим распределения параметра в заданном промежутке времени
+                # 1. За все время /
+                # 2. За выбранный промежуток для прогноза (промежуток для параметров) /
+                # 3. За выбранный промежуток для прогноза (только домашние матчи) /
+                # 4. Наносим на распределение прогнозное значение параметра.
+                self.make_distributions()
+            except:
+                pass
 
     def show_parameters_for_prediction(self, dfp):
         self.host.lineEdit_2P1.setText(str(np.round(dfp.data_for_prediction['2P #1'].values[0], 1)))
@@ -521,11 +535,53 @@ class ModelTab:
         self.host.lineEdit_totalscore.setText(str(np.round(dfp.data_for_prediction['Total points'].values[0], 1)))
 
     def make_distributions(self):
+
+        limits_dict = {
+            'Total points': (160, 360),
+            'PTS #1': (60, 160),
+            'PTS #2': (60, 160),
+            '2P #1': (10, 70),
+            '2P #2': (10, 70),
+            '2PA #1': (30, 100),
+            '2PA #2': (30, 100),
+            '2P% #1': (0, 100),
+            '2P% #2': (0, 100),
+            '3P #1': (10, 60),
+            '3P #2': (10, 60),
+            '3PA #1': (10, 60),
+            '3PA #2': (10, 60),
+            '3P% #1': (0, 100),
+            '3P% #2': (0, 100),
+            'FT #1': (0, 50),
+            'FT #2': (0, 50),
+            'FTA #1': (0, 50),
+            'FTA #2': (0, 50),
+            'FT% #1': (0, 100),
+            'FT% #2': (0, 100),
+            'ORB #1': (0, 30),
+            'ORB #2': (0, 30),
+            'DRB #1': (10, 60),
+            'DRB #2': (10, 60),
+            'TRB #1': (20, 70),
+            'TRB #2': (20, 70),
+            'AST #1': (0, 70),
+            'AST #2': (0, 70),
+            'F #1': (0, 40),
+            'F #2': (0, 40),
+            'STL #1': (0, 25),
+            'STL #2': (0, 25),
+            'BLK #1': (0, 20),
+            'BLK #2': (0, 20),
+            'TOV #1': (0, 35),
+            'TOV #2': (0, 35),
+            }
+
+
         self.distribution_mpl_canvas.axes.clear()
         df_all = self.host.init_df[self.host.init_df['Team #1'] == self.prediction_assignment['team']].copy()
         self.distribution_mpl_canvas.axes.hist(df_all[self.prediction_assignment['target']],
                                                bins=25,
-                                               label=f'all data n={df_all.shape[0]}')
+                                               label=f'All available plays, n={df_all.shape[0]}')
 
         start_counter = self.prediction_assignment['time_frames_median_model'][0]
         end_counter = -self.prediction_assignment['time_frames_median_model'][1]
@@ -535,22 +591,24 @@ class ModelTab:
         df_all_time_limited = df_all[(df_all['TimeShift'] >= end_counter) & (df_all['TimeShift'] < start_counter)].copy()
         self.distribution_mpl_canvas.axes.hist(df_all_time_limited[self.prediction_assignment['target']],
                                                bins=25,
-                                               label=f'timeframe n={df_all_time_limited.shape[0]}', color='red')
-
-        df_all_time_limited_st = df_all_time_limited[df_all_time_limited['Team #2'] == self.prediction_assignment['op_team']].copy()
-        self.distribution_mpl_canvas.axes.hist(df_all_time_limited_st[self.prediction_assignment['target']],
-                                               bins=5,
-                                               label=f'timeframe same team n={df_all_time_limited_st.shape[0]}', color='grey')
+                                               label=f'In selected range n={df_all_time_limited.shape[0]}', color='chartreuse',
+                                               alpha=0.6)
 
         df_all_time_limited_hf = df_all_time_limited[df_all_time_limited['Home flag'] == self.prediction_assignment['home_flag']].copy()
         self.distribution_mpl_canvas.axes.hist(df_all_time_limited_hf[self.prediction_assignment['target']],
                                                bins=10,
-                                               label=f'timeframe same field n={df_all_time_limited_hf.shape[0]}', color='green')
+                                               label=f'Same Field in range, n={df_all_time_limited_hf.shape[0]}', color='green',
+                                               alpha=0.6)
+
+        df_all_time_limited_st = df_all_time_limited[df_all_time_limited['Team #2'] == self.prediction_assignment['op_team']].copy()
+        self.distribution_mpl_canvas.axes.hist(df_all_time_limited_st[self.prediction_assignment['target']],
+                                               bins=5,
+                                               label=f'Same Team in range, n={df_all_time_limited_st.shape[0]}', color='red')
 
         df_all_time_limited_hf_st = df_all_time_limited_hf[df_all_time_limited_hf['Team #2'] == self.prediction_assignment['op_team']].copy()
         self.distribution_mpl_canvas.axes.hist(df_all_time_limited_hf_st[self.prediction_assignment['target']],
                                                bins=5,
-                                               label=f'timeframe same field same team n={df_all_time_limited_hf_st.shape[0]}', color='pink')
+                                               label=f'Same Field&Team in range, n={df_all_time_limited_hf_st.shape[0]}', color='pink')
 
         x_accepted = [self.prediction_results['y_calc'], self.prediction_results['y_calc']]
         y_accepted = [0, 25]
@@ -569,9 +627,10 @@ class ModelTab:
                                               arrowprops=dict(facecolor='black', shrink=0.05),
                                               )
 
-        self.distribution_mpl_canvas.axes.set_title(f"Distribution of {self.prediction_assignment['target']}")
+        self.distribution_mpl_canvas.axes.set_title(f"Distribution of {self.prediction_assignment['target']} for team: {self.prediction_assignment['team']}")
         self.distribution_mpl_canvas.axes.set_xlabel(f"{self.prediction_assignment['target']}")
         self.distribution_mpl_canvas.axes.set_ylabel('frequency')
+        self.distribution_mpl_canvas.axes.set_xlim(limits_dict[self.prediction_assignment['target']])
         self.distribution_mpl_canvas.axes.legend(loc='upper right', fontsize=7)
         add_grid(self.distribution_mpl_canvas.axes)
         self.distribution_mpl_canvas.fig.canvas.draw()

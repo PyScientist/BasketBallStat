@@ -28,15 +28,15 @@ def add_grid(axes):
 
 def plot_equal_values_line(ax, x_min=0, x_max=10000, quantity=10000, color='grey'):
     x = np.linspace(x_min, x_max, quantity)
-    return ax.plot(x, x, c=color, linestyle='--', label='Линия равных значений')
+    return ax.plot(x, x, c=color, linestyle='--', label='Line of equal values')
 
 
 def plot_error_percent_lines(ax, x_min=0, x_max=10000, quantity=10000, color='grey', percentage=10):
     x = np.linspace(x_min, x_max, quantity)
     y1 = x - x * percentage / 100
     y2 = x + x * percentage / 100
-    return (ax.plot(x, y1, c=color, linestyle='--', label=F'Ошибка -{percentage}%'),
-            ax.plot(x, y2, c=color, linestyle='--', label=F'Ошибка +{percentage}%'))
+    return (ax.plot(x, y1, c=color, linestyle='--', label=F'Error -{percentage}%'),
+            ax.plot(x, y2, c=color, linestyle='--', label=F'Error +{percentage}%'))
 
 
 def prepare_data_for_prediction(target, league, team, op_team, home_flag,
@@ -192,6 +192,22 @@ class AbstractBasketballModel:
         return self.model_knr.predict(X_scaled)[0]
 
     def plot_knr_training_results(self, ax) -> None:
+
+        def prepare_pairs_parameter_correlations(self):
+            correlation_series = self.c_matrix.loc[:, ([self.target])]
+
+            correlation_pairs = [[feature,
+                                  round(float(correlation_series.loc[[feature]].values[0][0]), 2)] for feature in self.features]
+
+            correlation_strings = 'Features for prediction:'
+            for i,item in enumerate(correlation_pairs):
+                correlation_strings += f'{i+1}) {item[0]} R = {item[1]};\n'
+
+            return correlation_strings
+
+        correlation_pairs = prepare_pairs_parameter_correlations(self)
+        print(correlation_pairs)
+
         ax.clear()
         y_train, y_train_calc, y_test, y_test_calc = self.packed_knr_results_calc
         ax.set_title(f'KNR Model for {self.target}, team {self.team}')
@@ -205,7 +221,7 @@ class AbstractBasketballModel:
         ax.set_ylim(min(self.y) - delta, max(self.y) + delta)
         ax.set_xlabel(f'"{self.target}" fact')
         ax.set_ylabel(f'"{self.target}" calculated')
-        ax.text(min(self.y), max(self.y), f"features = {self.features}", fontsize=6)
+        ax.text(min(self.y), max(self.y)-delta*3, correlation_pairs, fontsize=6, fontweight ='bold')
         add_grid(ax)
         ax.legend(loc='lower right', fontsize=6)
 
