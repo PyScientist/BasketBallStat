@@ -206,7 +206,6 @@ class AbstractBasketballModel:
             return correlation_strings
 
         correlation_pairs = prepare_pairs_parameter_correlations(self)
-        print(correlation_pairs)
 
         ax.clear()
         y_train, y_train_calc, y_test, y_test_calc = self.packed_knr_results_calc

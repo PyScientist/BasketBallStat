@@ -91,8 +91,13 @@ def pars_tournament_content(url: str, league: str, season: str) -> Dict:
                     league = td_records[1].find('img')['title']
                     game = round_sell.find('span', class_='rnd_desktop').contents[0]
 
-                team_at_home = team_cell.find('span', class_='spnt2').contents[0].contents[0]
-                team_outside = team_cell.find('span', class_='spnt1').contents[0].contents[0]
+                if season == '2020-2021':
+                    team_at_home = team_cell.find('span', class_='spnt1').contents[0].contents[0]
+                    team_outside = team_cell.find('span', class_='spnt2').contents[0].contents[0]
+                else:
+                    team_at_home = team_cell.find('span', class_='spnt2').contents[0].contents[0]
+                    team_outside = team_cell.find('span', class_='spnt1').contents[0].contents[0]
+
                 link = score_sell.find('a')['href'].strip()
                 score_outside_team, score_home_team = score_sell.find('a').contents[0].split('-')
                 victory_flag = dict_play_result[score_sell.find('img')['src']]

@@ -130,6 +130,12 @@ class LastGamesTab:
     def __init__(self, host):
         try:
             self.host = host
+            # Set up initial size of table items text
+            self.rows_font_size = 10
+            self.items_font = QFont()
+            self.items_font.setPointSize(self.rows_font_size)
+            self.host.horizontalSlider_font_lastGames.valueChanged.connect(self.host.lcdNumber_font_lastGames.display)
+            self.host.horizontalSlider_font_lastGames.valueChanged.connect(self.font_dial_value_changed)
             self.color_file_path = './colors_list.csv'
             self.fill_league_and_team()
             self.host.lineEdit_file_with_parsing_results.textEdited.connect(self.fill_league_and_team)
@@ -163,6 +169,15 @@ class LastGamesTab:
             print(err)
             self.host.textEdit_parsing_information.insertPlainText(f'\nSome error occurred '
                                                                    f'while loading LastGames tab')
+
+    def font_dial_value_changed(self, value):
+        try:
+            self.rows_font_size = value
+            self.items_font.setPointSize(self.rows_font_size)
+            self.fill_table()
+        except Exception as e:
+            print(e)
+
 
     def choose_color_simple_dialog(self, row, column):
         dialog = CustomChooseColourDialog()
@@ -341,12 +356,12 @@ class LastGamesTab:
         self.host.TableWidget_LastGames.setColumnCount(columns)
         self.host.TableWidget_LastGames.setHorizontalHeaderLabels(columns_header)
         self.host.TableWidget_LastGames.setVerticalHeaderLabels(rows_header)
-
+        self.host.TableWidget_LastGames.setShowGrid(False)
         header_font = QFont()
-        header_font.setPointSize(10)
+        header_font.setPointSize(self.rows_font_size)
         self.host.TableWidget_LastGames.horizontalHeader().setFont(header_font)
         header_font_vert = QFont()
-        header_font_vert.setPointSize(5)
+        header_font_vert.setPointSize(self.rows_font_size-2)
         self.host.TableWidget_LastGames.verticalHeader().setFont(header_font_vert)
 
         self.host.TableWidget_LastGames.horizontalHeader().setStyleSheet("color: rgb(153, 0, 0); "
@@ -364,16 +379,16 @@ class LastGamesTab:
                         & (results[x][2] == colors_list[y][2])):
                     colors_dict[x] = colors_list[y][3]
 
-
-        item_font = QFont()
-        item_font.setPointSize(7)
-
         for j in range(rows):
             for i in range(columns):
                 item = QTableWidgetItem()
                 item.setText(str(results[j][i]))
+                if (i!=1) & (i!=2):
+                    item.setTextAlignment(Qt.AlignRight)
+                else:
+                    item.setTextAlignment(Qt.AlignLeft)
                 item.setBackground(QColor(235, 235, 235))
-                item.setFont(item_font)
+                item.setFont(self.items_font)
                 if j in colors_dict:
                     r, g, b, _ = colors_dict[j].replace('(', '').replace(')', '').split(',')
                     item.setBackground(QColor(int(r), int(g), int(b)))
@@ -664,6 +679,13 @@ class TournamentTab:
         self.team_to_highlight = None
         self.param_to_filter = 'WINS'
         try:
+            # Set up initial size of table items text
+            self.rows_font_size = 10
+            self.items_font = QFont()
+            self.items_font.setPointSize(self.rows_font_size)
+            self.host.horizontalSlider_font_Tournament.valueChanged.connect(self.host.lcdNumber_font_Tournament.display)
+            self.host.horizontalSlider_font_Tournament.valueChanged.connect(self.font_slider_value_changed)
+
             self.host.comboBo_choose_league_for_turnament.setMaxVisibleItems(35)
             self.host.comboBox_choose_season_for_turnament.setMaxVisibleItems(35)
             self.host.comboBox_choose_season_for_turnament.clear()
@@ -674,7 +696,15 @@ class TournamentTab:
             self.host.lineEdit_file_with_parsing_results.textEdited.connect(self.refresh_seasons_leagues)
         except Exception:
             self.host.textEdit_parsing_information.insertPlainText(f'\nSome error occurred '
-                                                                   f'while loading Tournament tab')
+                                                                 f'while loading Tournament tab')
+
+    def font_slider_value_changed(self, value):
+        try:
+            self.rows_font_size = value
+            self.items_font.setPointSize(self.rows_font_size)
+            self.get_tournament_table()
+        except Exception as e:
+            print(e)
 
     def update_according_leagues_tournament_tab(self, df):
         self.host.comboBox_choose_season_for_turnament.clear()
@@ -737,13 +767,15 @@ class TournamentTab:
         self.host.tableWidget_tournament_table.horizontalHeader().setStyleSheet("color: rgb(153, 0, 0); "
                                                                                 "background-color: rgb(238, 238, 238)")
         self.host.tableWidget_tournament_table.verticalHeader().setStyleSheet("color: rgb(153, 0, 0); "
-                                                                                "background-color: rgb(238, 238, 238)")
+                                                                              "background-color: rgb(238, 238, 238);")
+
+        self.host.tableWidget_tournament_table.verticalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         header_font = QFont()
-        header_font.setPointSize(7)
+        header_font.setPointSize(self.rows_font_size)
         self.host.tableWidget_tournament_table.horizontalHeader().setFont(header_font)
         header_font_vertical = QFont()
-        header_font_vertical.setPointSize(6)
+        header_font_vertical.setPointSize(self.rows_font_size-1)
         self.host.tableWidget_tournament_table.verticalHeader().setFont(header_font_vertical)
 
         self.host.tableWidget_tournament_table.itemClicked.connect(self.set_sorting_and_higlighting)
@@ -760,15 +792,13 @@ class TournamentTab:
 
         self.host.tableWidget_tournament_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.host.tableWidget_tournament_table.resizeColumnsToContents()
-        self.host.tableWidget_tournament_table.verticalHeader().setDefaultSectionSize(5)
-
-        item_font = QFont()
-        item_font.setPointSize(7)
+        self.host.tableWidget_tournament_table.resizeRowsToContents()
 
         for j in range(rows):
             for i in range(columns):
                 item = QTableWidgetItem()
-                item.setFont(item_font)
+                item.setFont(self.items_font)
+                item.setTextAlignment(Qt.AlignRight)
                 if collorification == True:
                     if (i >= 0) and (i <= 18):
                         item.setBackground(QColor(176, 224, 230))
@@ -790,7 +820,6 @@ class TournamentTab:
 
         self.team_to_highlight = None
         self.param_to_filter = 'WINS'
-
 
     def prepare_tournament_data(self, league, season, param_for_filter):
 

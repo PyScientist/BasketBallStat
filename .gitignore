@@ -1,4 +1,5 @@
 parse_content/
 parse_results/
 venv/
+screenshots/
 __pycache__
