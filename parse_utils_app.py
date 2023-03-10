@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import datetime
 
-from PyQt5 import QtCore
+from PySide2 import QtCore
 
 
 def time_stamp() -> datetime.datetime:
@@ -15,7 +15,7 @@ def get_assignment_to_parse(assignment_path: str,
                             league_in: list,
                             season_in: list,
                             team_in: list,
-                            logger: QtCore.pyqtBoundSignal) -> Union[List[Tuple[str, str, str, str, str]], None]:
+                            logger: QtCore.Signal) -> Union[List[Tuple[str, str, str, str, str]], None]:
     """
     The function get information from specified Excel file and provide it as List.
     This function also print in console the list of teams which will be parsed and updated.
@@ -107,7 +107,7 @@ def prepare_to_parsing(assignment_file: str,
                        league_in: list,
                        season_in: list,
                        team_in: list,
-                       logger: QtCore.pyqtBoundSignal) -> Union[List[Tuple[str, str, str, str, str]], None]:
+                       logger: QtCore.Signal) -> Union[List[Tuple[str, str, str, str, str]], None]:
     """
     Make preparation for parsing such as creation necessary folders
     :return:

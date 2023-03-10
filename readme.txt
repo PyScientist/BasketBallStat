@@ -11,9 +11,9 @@
 
 В программе применены:
 1) Обращение для собора данных с удаленных ресурсов через прокси сервера
-2) Асинхронность с использованием средств библиотеки PyQt
+2) Асинхронность с использованием средств библиотеки PySide6
 3) Анализ данных и их отображение с использованием Matplotlib, Scikit-learn и Pandas
-4) Графический интерфейс программы разработан на PyQt
+4) Графический интерфейс программы разработан на PySide6
 
 Инструкции по равертыванию
 https://www.python.org/ftp/python/3.9.10/python-3.9.10-amd64.exe
@@ -44,3 +44,6 @@ https://www.python.org/ftp/python/3.9.10/python-3.9.10-amd64.exe
 <<<python main.py>>>
 9) А в случае если терминал открыт и виртуальная среда уже активированна
 <<<python main.py>>>
+
+To conver ui file
+pyside6-uic basketball_app_main_window.ui > basketball_app_main_window.py

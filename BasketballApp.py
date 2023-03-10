@@ -2,11 +2,11 @@ import sys
 import os
 import pandas as pd
 
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
-from PyQt5 import uic
+from PySide6.QtCore import QObject, QThread
 
-from PyQt5.QtCore import QObject, pyqtSignal, QThread
+from PySide6.QtCore import Signal as pyqtSignal
 
 from parsing_run import perform_parse
 
@@ -14,6 +14,7 @@ from teams_list_import_app import parse_teams_list
 
 from ui_tabs import TournamentTab, LastGamesTab, ModelTab
 
+from ui.basketball_app_main_window import Ui_MainWindow as CustomUi
 
 class WorkerPerformParse(QObject):
     """Worker for performing parsing"""
@@ -29,11 +30,11 @@ class WorkerPerformParse(QObject):
         self.finished.emit()
 
 
-class Ui(QMainWindow):
+class Ui(QMainWindow, CustomUi):
     def __init__(self):
         super().__init__()
 
-        uic.loadUi('./ui/basketball_app_main-window.ui', self)
+        self.setupUi(self)
 
         dirs_to_create = ['./parse_content', './parse_results']
         for directory in dirs_to_create:
@@ -65,8 +66,7 @@ class Ui(QMainWindow):
         self.last_games_tab = LastGamesTab(self)
         self.model_tab = ModelTab(self)
         self.lineEdit_league_for_parsing.setText('https://www.asia-basket.com'
-                                                 '/South-Korea/basketball-League-KBL-Teams.aspx')
-
+                                                     '/South-Korea/basketball-League-KBL-Teams.aspx')
     def update_parsing_assignment(self):
         path_for_league = self.lineEdit_league_for_parsing.text()
         assignment_path = self.lineEdit_file_with_parsing_assignment.text()
@@ -107,7 +107,6 @@ class Ui(QMainWindow):
             self.textEdit_parsing_information.insertPlainText(f'\nData from {file_path} was successfully loaded...')
         except:
             self.textEdit_parsing_information.insertPlainText(f'\nSome error occurred while loading {file_path}')
-
 
     def choose_assignment_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self,

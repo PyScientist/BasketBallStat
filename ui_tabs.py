@@ -3,17 +3,20 @@ import pandas as pd
 
 import os
 
-from PyQt5.QtWidgets import QTableWidgetItem, QAbstractScrollArea, \
-    QSizePolicy, QVBoxLayout, QColorDialog, QTableWidget, QDialog, QDialogButtonBox
+from PySide6.QtWidgets import QTableWidgetItem, QAbstractScrollArea,  \
+    QVBoxLayout, QColorDialog, QTableWidget, QDialog, QDialogButtonBox
 
-from PyQt5.QtWidgets import QLabel
+from PySide6.QtWidgets import QLabel
 
-from PyQt5.QtGui import QFont, QColor, QBrush
-from PyQt5.QtCore import QDate, Qt, pyqtSignal, QEvent
+from PySide6.QtGui import QFont, QColor, QBrush
+from PySide6.QtCore import QDate, Qt, QEvent
+from PySide6.QtCore import Signal as pyqtSignal
+
 from StatSmart_app import calc_time_shift, convert_date
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT as NavigationToolbar
+
 from matplotlib import pyplot as plt
 
 import datetime
@@ -86,7 +89,6 @@ class MyMplCanvas(FigureCanvasQTAgg):
     def __init__(self, fig, parent=None):
         self.fig = fig
         FigureCanvasQTAgg.__init__(self, self.fig)
-        FigureCanvasQTAgg.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvasQTAgg.updateGeometry(self)
 
 
@@ -454,8 +456,8 @@ class ModelTab:
 
             self.host.dateEdit_next_game_prognose.setDate(QDate(datetime.datetime.today()))
             self.host.pushButton_do_prognose.clicked.connect(self.do_prediction)
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
     def do_prediction(self):
         # If chosen the same teams then show alert dialog to notify that this happened
@@ -485,7 +487,7 @@ class ModelTab:
                     team=self.host.comboBox_choose_team_prognose.currentText(),
                     op_team=self.host.comboBox_choose_opponent_prognose.currentText(),
                     home_flag=home_flag,
-                    next_play_date=self.host.dateEdit_next_game_prognose.date().toPyDate(),
+                    next_play_date=self.host.dateEdit_next_game_prognose.date().toPython(),
                     days_for_model=int(self.host.spinBox_days_backward_model.value()),
                     days_for_param=int(self.host.spinBox_days_backward_params.value()))
 
@@ -507,8 +509,8 @@ class ModelTab:
                 # 3. За выбранный промежуток для прогноза (только домашние матчи) /
                 # 4. Наносим на распределение прогнозное значение параметра.
                 self.make_distributions()
-            except:
-                pass
+            except Exception as e:
+                print(e)
 
     def show_parameters_for_prediction(self, dfp):
         self.host.lineEdit_2P1.setText(str(np.round(dfp.data_for_prediction['2P #1'].values[0], 1)))
