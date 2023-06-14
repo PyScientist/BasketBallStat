@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import datetime
 
-from PySide2 import QtCore
+from PySide6 import QtCore
 
 
 def time_stamp() -> datetime.datetime:
@@ -119,7 +119,7 @@ def prepare_to_parsing(assignment_file: str,
     :param logger: logger to transit signals by emit method call
     """
 
-    def create_folder_for_parse(logger_in: QtCore.pyqtBoundSignal) -> None:
+    def create_folder_for_parse(logger_in: QtCore.Signal) -> None:
         """Preparation folder to store raw html"""
         folder = './parse_results'
         if os.path.isdir(folder) is False:
@@ -131,7 +131,7 @@ def prepare_to_parsing(assignment_file: str,
         else:
             logger_in.emit(f'\n{folder} already exists')
 
-    def create_folder_for_parse_content(logger_in: QtCore.pyqtBoundSignal) -> None:
+    def create_folder_for_parse_content(logger_in: QtCore.Signal) -> None:
         """Preparation folder to store parsed content"""
         folder = './parse_content'
         if os.path.isdir(folder) is False:
@@ -143,7 +143,7 @@ def prepare_to_parsing(assignment_file: str,
         else:
             logger_in.emit(f'\n{folder} already exists')
 
-    def create_teams_parse_results_folders(teams_links_internal: List, logger_in: QtCore.pyqtBoundSignal) -> None:
+    def create_teams_parse_results_folders(teams_links_internal: List, logger_in: QtCore.Signal) -> None:
         """Preparation folders to store for raw html of plays results for
         teams according to excel"""
         for team in teams_links_internal:
@@ -157,7 +157,7 @@ def prepare_to_parsing(assignment_file: str,
             else:
                 logger_in.emit(f'\n{folder} already exists')
 
-    def delete_parse_content(logger_in: QtCore.pyqtBoundSignal) -> None:
+    def delete_parse_content(logger_in: QtCore.Signal) -> None:
         """Clear data"""
         folder = './parse_content'
         list_files = os.listdir(folder)
